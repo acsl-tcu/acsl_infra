@@ -35,9 +35,9 @@ if [ $# -ge 1 ]; then
     TAG=$1
     echo "===== TAG: ${TAG%%_x86*}${x86} ===="
     if [[ $OPT != "" ]]; then
-      cimage=${TAG%%_x86*}${x86} # image candidate
-    else
       cimage=${OPT}
+    else
+      cimage=${TAG%%_x86*}${x86} # image candidate
     fi
     exist_image=$(docker images kasekiguchi/acsl-common:${cimage} | grep ${cimage})
     echo "Search image: ${cimage}         Found: $exist_image "
