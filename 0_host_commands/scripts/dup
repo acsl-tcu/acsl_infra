@@ -28,13 +28,17 @@ if [ $# -ge 1 ]; then
   else
     launch_args=${@:2:($# - 1)}
     CONTAINER_NAME=$1
-    if [[ -n "$launch_args" &&  "$(docker inspect -f '{{.State.Running}}' $1 2>/dev/null)" = "true" ]]; then
+    if [[ -n "$launch_args" && "$(docker inspect -f '{{.State.Running}}' $1 2>/dev/null)" = "true" ]]; then
       CONTAINER_NAME="$1_${2//:=/_}"
     fi
     #LARGS=$launch_args HOSTNAME=$(hostname | sed -e 's/-/_/g') docker compose --env-file envfiles/env.$1 up common -d
     TAG=$1
     echo "===== TAG: ${TAG%%_x86*}${x86} ===="
-    cimage=${TAG%%_x86*}${x86} # image candidate
+    if [[ $OPT != "" ]]; then
+      cimage=${TAG%%_x86*}${x86} # image candidate
+    else
+      cimage=${OPT}
+    fi
     exist_image=$(docker images kasekiguchi/acsl-common:${cimage} | grep ${cimage})
     echo "Search image: ${cimage}         Found: $exist_image "
     if [[ -z $exist_image ]]; then
@@ -51,11 +55,6 @@ if [ $# -ge 1 ]; then
     fi
     ROS_LAUNCH=$(ls -v $ACSL_WORK_DIR/1_launcher/ | grep launch_$1 | fmt | awk '{print $NF}')
 
-    # if [[ ${OPT} == "" ]]; then
-    #   CONTAINER_NAME=$1
-    # else
-    #   TAG=${OPT}
-    # fi
     if [[ $1 == "dev" ]]; then
       cp $ACSL_ROS2_DIR/1_launcher/launch_dev.sh $ACSL_WORK_DIR/1_launcher/
       chmod a+x $ACSL_WORK_DIR/1_launcher/launch_dev.sh

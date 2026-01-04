@@ -27,7 +27,13 @@ ROS_DISTRO=humble dbuild arm64v8/ros:humble humble  $ACSL_ROS2_DIR/3_dockerfiles
 dpush humble
 ```
 
-dbuildの第１引数としてイメージを指定しているが実際は使っておらず、dockerfile内でROS_DISTROとアーキテクチャから自動的に使用するイメージを選択している。i
+dbuildの第１引数としてイメージを指定しているが実際は使っておらず、dockerfile内でROS_DISTROとアーキテクチャから自動的に使用するイメージを選択している。
+
+できあがったイメージの確認
+
+```bash
+dup --image=jazzy_x86 dev
+```
 
 ### Third party imageを利用するとき
 
