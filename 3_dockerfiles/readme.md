@@ -29,10 +29,16 @@ dpush humble
 
 dbuildの第１引数としてイメージを指定しているが実際は使っておらず、dockerfile内でROS_DISTROとアーキテクチャから自動的に使用するイメージを選択している。
 
-できあがったイメージの確認
+できあがったイメージの確認 & image update & image upload
 
 ```bash
-dup --image=jazzy_x86 dev
+dup --image=jazzy_x86 dev # --image=image-tag container-name
+# in container
+apt update
+apt upgrade -y
+# outside container
+dcommit dev jazzy_x86 # container-name image-tag
+dpush image-tag
 ```
 
 ### Third party imageを利用するとき

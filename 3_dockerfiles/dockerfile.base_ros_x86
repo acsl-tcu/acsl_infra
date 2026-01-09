@@ -40,6 +40,9 @@ RUN apt-get update -y && DEBIAN_FRONTEND=noninteractive apt-get install -y \
   python3-pip python3-venv python3-websockets python3-dotenv \
   && apt-get clean -y && rm -rf /var/lib/apt/lists/*
 
+RUN apt update -y && apt upgrade -y \
+  && apt-get clean -y && rm -rf /var/lib/apt/lists/*
+
 # venv 作成 + venv をデフォルトに
 ENV VIRTUAL_ENV=/root/.venv
 RUN python3 -m venv --system-site-packages "$VIRTUAL_ENV"
