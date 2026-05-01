@@ -9,7 +9,7 @@ if [[ "$1" =~ ^--image= ]]; then
   OPT=$(echo $1 | sed -e 's/^--image=//')
   shift
 fi
-compose=" -f ${ACSL_ROS2_DIR}/4_docker/docker-compose.yml "
+compose=" -f ${ACSL_ROS2_DIR}/docker/docker-compose.yml "
 local_compose=$(ls . | grep docker-compose_${1}.yml)
 if [[ -n ${local_compose} ]]; then
   compose=${compose}" -f ${ACSL_WORK_DIR}/docker-compose_${1}.yml "
@@ -17,8 +17,8 @@ if [[ -n ${local_compose} ]]; then
   echo ${compose}
 fi
 
-#cd $ACSL_ROS2_DIR/4_docker
-source $ACSL_ROS2_DIR/4_docker/common/scripts/super_echo
+#cd $ACSL_ROS2_DIR/docker
+source $ACSL_ROS2_DIR/docker/common/scripts/super_echo
 source $ACSL_ROS2_DIR/bashrc
 
 gecho "DUP ${ROS_DOMAIN_ID}: $OPT : $1 : ${@:2:($# - 1)}"
@@ -53,11 +53,11 @@ if [ $# -ge 1 ]; then
       echo "== image ${cimage} exists"
       TAG=${cimage}
     fi
-    ROS_LAUNCH=$(ls -v $ACSL_WORK_DIR/1_launcher/ | grep launch_$1 | fmt | awk '{print $NF}')
+    ROS_LAUNCH=$(ls -v $ACSL_WORK_DIR/launcher/ | grep launch_$1 | fmt | awk '{print $NF}')
 
     if [[ $1 == "dev" ]]; then
-      cp $ACSL_ROS2_DIR/1_launcher/launch_dev.sh $ACSL_WORK_DIR/1_launcher/
-      chmod a+x $ACSL_WORK_DIR/1_launcher/launch_dev.sh
+      cp $ACSL_ROS2_DIR/launcher/launch_dev.sh $ACSL_WORK_DIR/launcher/
+      chmod a+x $ACSL_WORK_DIR/launcher/launch_dev.sh
       ROS_LAUNCH=launch_dev.sh
       CONTAINER_NAME=dev${TARGET}
     fi

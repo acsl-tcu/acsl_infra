@@ -5,7 +5,7 @@ generate_rosbag() {
   start_time=$(date +%s)
 
   while true; do
-    output=$($ACSL_ROS2_DIR/0_host_commands/scripts/dlogs record | grep stopped)
+    output=$($ACSL_ROS2_DIR/commands/scripts/dlogs record | grep stopped)
     echo "$output"
     # 条件1: 出力に"OK"が含まれるか
     if [[ -n "$output" ]]; then
@@ -27,7 +27,7 @@ generate_rosbag() {
   done
 }
 
-source $ACSL_ROS2_DIR/4_docker/common/scripts/super_echo
+source $ACSL_ROS2_DIR/docker/common/scripts/super_echo
 if [ $# -ge 1 ]; then
   if [ $1 = "all" ]; then
     if [[ -f "${ACSL_WORK_DIR}/stop${TARGET}" ]]; then

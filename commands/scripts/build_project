@@ -14,7 +14,7 @@ else
   IMAGE=kasekiguchi/acsl-common:${TAG}
 fi
 
-source $ACSL_ROS2_DIR/4_docker/common/scripts/super_echo
+source $ACSL_ROS2_DIR/docker/common/scripts/super_echo
 if [ $# -ge 1 ]; then
   #packs=${@:1:($# - 1)}
   packs=$@
@@ -24,8 +24,8 @@ fi
 
 gecho "BUILD_PROJECT: build own ros packages on ${IMAGE}"
 
-cp ${ACSL_ROS2_DIR}/1_launcher/launch_build.sh ${ACSL_WORK_DIR}/1_launcher/
-chmod a+x ${ACSL_WORK_DIR}/1_launcher/launch_build.sh
+cp ${ACSL_ROS2_DIR}/launcher/launch_build.sh ${ACSL_WORK_DIR}/launcher/
+chmod a+x ${ACSL_WORK_DIR}/launcher/launch_build.sh
 
 exist_image=$(docker images ${IMAGE} | grep ${IMAGE%%:*})
 if [[ -z $exist_image ]]; then
@@ -42,4 +42,4 @@ else
   gecho "remove build container"
   drm build
 fi
-rm -f ${ACSL_WORK_DIR}/1_launcher/launch_build.sh
+rm -f ${ACSL_WORK_DIR}/launcher/launch_build.sh

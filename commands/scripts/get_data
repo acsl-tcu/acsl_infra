@@ -16,12 +16,12 @@ function open_pdf {
 }
 
 [[ "$1" =~ ^[0-9]+$ ]]; then
-  echo "scp $USER@${1}:$ACSL_ROS2_DIR/2_ros_packages/acs/acs/Log/latest/acsdata.pkl ."
-  scp $USER@${1}:$ACSL_ROS2_DIR/2_ros_packages/acs/acs/Log/latest/acsdata.pkl .
+  echo "scp $USER@${1}:$ACSL_ROS2_DIR/packages/acs/acs/Log/latest/acsdata.pkl ."
+  scp $USER@${1}:$ACSL_ROS2_DIR/packages/acs/acs/Log/latest/acsdata.pkl .
 fi
 
-echo "python3 $ACSL_ROS2_DIR/2_ros_packages/acs/acs/Plotter/sample.py"
-python3 $ACSL_ROS2_DIR/2_ros_packages/acs/acs/Plotter/sample.py
+echo "python3 $ACSL_ROS2_DIR/packages/acs/acs/Plotter/sample.py"
+python3 $ACSL_ROS2_DIR/packages/acs/acs/Plotter/sample.py
 
 echo "open pdf file"
 open_pdf figure.pdf

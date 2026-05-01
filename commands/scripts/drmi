@@ -1,6 +1,6 @@
 #! /usr/bin/bash
 # arguments : tag name
-source $ACSL_ROS2_DIR/4_docker/common/scripts/super_echo
+source $ACSL_ROS2_DIR/docker/common/scripts/super_echo
 
 if [ $# -ge 1 ]; then
   if [ $1 = "all" ]; then
