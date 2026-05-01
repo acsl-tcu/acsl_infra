@@ -22,10 +22,10 @@ docker pull kasekiguchi/acsl-common:${IMAGE}
 ```
 
 ## 4. systemd登録（HOST側）
-`0_host_commands`のセットアップスクリプトでsystemdに登録する。
+`commands`のセットアップスクリプトでsystemdに登録する。
 ```bash
 PROJECT="<PROJECT>"
-cd ~/ros2/0_host_commands
+cd ~/ros2/commands
 bash setup.sh "${PROJECT}"
 source ~/.bashrc
 ```
@@ -39,7 +39,7 @@ sudo reboot
 
 ## 5. コンテナ起動（手動で起動する場合）
 ```bash
-cd ~/ros2/4_docker
+cd ~/ros2/docker
 docker compose --env-file <envfile> up common -d
 ```
 `<envfile>`はプロジェクトに対応する環境ファイルを指定する。
@@ -48,10 +48,10 @@ docker compose --env-file <envfile> up common -d
 コンテナ内でビルドする。必要ならパッケージ指定でビルド可能。
 ```bash
 # 例: すべてのパッケージをビルド
-1_launcher/launch_build.sh
+launcher/launch_build.sh
 
 # 例: 指定パッケージのみビルド
-1_launcher/launch_build.sh <package_name>
+launcher/launch_build.sh <package_name>
 ```
 
 ## 7. 追加パッケージの作成（必要時）
@@ -71,5 +71,5 @@ ros2 run <package_name> <executable_name>
 ```
 
 ## 9. 補足
-- `0_host_commands/scripts/`に便利コマンド（`dps`, `dlogs`, `dup`など）がある。
-- ROSパッケージは`2_ros_packages/`配下に配置する。
+- `commands/scripts/`に便利コマンド（`dps`, `dlogs`, `dup`など）がある。
+- ROSパッケージは`packages/`配下に配置する。

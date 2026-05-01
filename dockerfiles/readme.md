@@ -17,13 +17,13 @@ image_rf_robot などはbase イメージからプロジェクトのデプロイ
 
 ```bash
 acsl robot rf 44 robot # 何でも良いのでACSLプロジェクトをまずデプロイしその環境内で実行する。
-ROS_DISTRO=jazzy dbuild ros:jazzy jazzy  $ACSL_ROS2_DIR/3_dockerfiles/dockerfile.base_ros_x86
+ROS_DISTRO=jazzy dbuild ros:jazzy jazzy  $ACSL_ROS2_DIR/dockerfiles/dockerfile.base_ros_x86
 dpush jazzy_x86
-ROS_DISTRO=humble dbuild ros:humble humble  $ACSL_ROS2_DIR/3_dockerfiles/dockerfile.base_ros_x86
+ROS_DISTRO=humble dbuild ros:humble humble  $ACSL_ROS2_DIR/dockerfiles/dockerfile.base_ros_x86
 dpush humble_x86
-ROS_DISTRO=jazzy dbuild arm64v8/ros:jazzy jazzy  $ACSL_ROS2_DIR/3_dockerfiles/dockerfile.base_ros_arm
+ROS_DISTRO=jazzy dbuild arm64v8/ros:jazzy jazzy  $ACSL_ROS2_DIR/dockerfiles/dockerfile.base_ros_arm
 dpush jazzy
-ROS_DISTRO=humble dbuild arm64v8/ros:humble humble  $ACSL_ROS2_DIR/3_dockerfiles/dockerfile.base_ros_arm
+ROS_DISTRO=humble dbuild arm64v8/ros:humble humble  $ACSL_ROS2_DIR/dockerfiles/dockerfile.base_ros_arm
 dpush humble
 ```
 

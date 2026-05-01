@@ -14,7 +14,7 @@ function stop_container_process() {
     /common/scripts/stop${TARGET}
   fi
   # コンテナ内で生成されたファイルがroot権限になるのを防ぐ処理
-  chmod -R a+wr /root/ros2_ws/1_launcher/rosbags/*
+  chmod -R a+wr /root/ros2_ws/launcher/rosbags/*
   apt-get clean && apt clean && rm -rf /var/lib/apt/lists/*
   # killall5
   sync
@@ -58,5 +58,5 @@ else
   # 子プロセスが終わるまで待つ
   # wait "$child_pid"
 fi
-rm -f $ACSL_WORK_DIR/1_launcher/launch_dev.sh
+rm -f $ACSL_WORK_DIR/launcher/launch_dev.sh
 stop_container_process
