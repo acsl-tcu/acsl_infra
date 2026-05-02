@@ -33,8 +33,8 @@ else
   if [[ -e $ACSL_ROS2_DIR/dockerfiles/dockerfile.${DF} ]]; then
     DF=$ACSL_ROS2_DIR/dockerfiles/dockerfile.${DF}
   fi
-  if [[ -e $ACSL_WORK_DIR/dockerfiles${TARGET}/dockerfile.${DF} ]]; then
-    DF=$ACSL_WORK_DIR/dockerfiles${TARGET}/dockerfile.${DF}
+  if [[ -e $ACSL_WORK_DIR/dockerfiles/dockerfile.${DF} ]]; then
+    DF=$ACSL_WORK_DIR/dockerfiles/dockerfile.${DF}
   fi
   ftag=$(docker images --format '{{.Repository}}:{{.Tag}}' | grep "^kasekiguchi/acsl-common:$ITAG")
   if [[ -n $ftag ]]; then
