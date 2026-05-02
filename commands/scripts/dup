@@ -73,6 +73,22 @@ if [ $# -ge 1 ]; then
       #exec common /common/scripts/Dcmd ${cmd[@]}
     fi
   fi
+
+  # ws_bridge 起動時は URL を表示
+  if [[ "$1" == "ws_bridge" ]]; then
+    sleep 3
+    _view_url=$(docker logs ${CONTAINER_NAME} 2>&1 | grep "view trace:" | tail -1 | sed 's/.*view trace: //')
+    if [[ -n "$_view_url" ]]; then
+      echo ""
+      echo "==========================================="
+      echo "  Open this URL in browser, then run:"
+      echo "    dup rf_robot sitl"
+      echo ""
+      echo "  $_view_url"
+      echo "==========================================="
+      echo ""
+    fi
+  fi
 fi
 
 # 記述の意味
