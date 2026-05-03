@@ -1,8 +1,8 @@
 #! /usr/bin/bash
 
-cd $ACSL_ROS2_DIR/4_docker/
+cd $ACSL_ROS2_DIR/docker/
 echo $(pwd)
-source $ACSL_ROS2_DIR/4_docker/common/scripts/super_echo
+source $ACSL_ROS2_DIR/docker/common/scripts/super_echo
 
 if [ $# -eq 0 ]; then
   echo "Build docker image"
@@ -30,11 +30,11 @@ else
     ITAG=${ITAG%_x86}_x86
     OTAG=${OTAG%_x86}_x86
   fi
-  if [[ -e $ACSL_ROS2_DIR/3_dockerfiles/dockerfile.${DF} ]]; then
-    DF=$ACSL_ROS2_DIR/3_dockerfiles/dockerfile.${DF}
+  if [[ -e $ACSL_ROS2_DIR/dockerfiles/dockerfile.${DF} ]]; then
+    DF=$ACSL_ROS2_DIR/dockerfiles/dockerfile.${DF}
   fi
-  if [[ -e $ACSL_WORK_DIR/3_dockerfiles${TARGET}/dockerfile.${DF} ]]; then
-    DF=$ACSL_WORK_DIR/3_dockerfiles${TARGET}/dockerfile.${DF}
+  if [[ -e $ACSL_WORK_DIR/dockerfiles/dockerfile.${DF} ]]; then
+    DF=$ACSL_WORK_DIR/dockerfiles/dockerfile.${DF}
   fi
   ftag=$(docker images --format '{{.Repository}}:{{.Tag}}' | grep "^kasekiguchi/acsl-common:$ITAG")
   if [[ -n $ftag ]]; then

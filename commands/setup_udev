@@ -5,7 +5,7 @@ sudo rm -f /etc/udev/rules.d/90-custom.rules
 if [[ -n $(ls | grep $RULE_FILE) ]]; then
   sudo cp -p $RULE_FILE /etc/udev/rules.d/90-custom.rules
 else
-  cd $ACSL_ROS2_DIR/4_docker/common/rules
+  cd $ACSL_ROS2_DIR/docker/common/rules
   sudo cp -p full.rules /etc/udev/rules.d/90-custom.rules
 fi
 sudo udevadm control --reload-rules

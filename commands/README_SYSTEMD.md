@@ -23,7 +23,7 @@ git pullして来たら以下を実行
 
 新しいros2 パッケージを導入するとき
 
-- 1_launcher/launch_<package>.sh を追加（書き方は他のlaunchファイル参照）
+- launcher/launch_<package>.sh を追加（書き方は他のlaunchファイル参照）
 - ros2_launch_<project_name>_sh を書き足す（書き足し方は既に書いてある中身参照）
 
 ros2_launch_serviceはsystemd の設定を変更する必要がある場合以外触らなくてOK

@@ -50,6 +50,9 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 # venv の pip を明示してアップデート & 追加パッケージ
 RUN python -m pip install --no-cache-dir -U pip setuptools wheel colcon-common-extensions \
-  && pip install -U dumb-init 
+  && pip install -U dumb-init
+
+RUN pip install --no-cache-dir numpy pyyaml \
+  && pip install --no-cache-dir git+https://github.com/acsl-tcu/project_common.git@v0.2.0
 
 RUN mkdir -p /root/ros2_ws/src

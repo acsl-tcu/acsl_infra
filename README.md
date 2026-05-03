@@ -45,11 +45,11 @@ setup後、新しいプロジェクトを作成する場合は[開発の仕方](
 ```
 .
 |- .github                : git関係（触ることはない）
-|- 0_host_commands/       : scripts for HOST setup
-|- 1_launcher/            : (ROS) launch files for container
-|- 2_ros_packages/        : ROS packages
-|- 3_dockerfiles/         : dockerfile to build image
-|- 4_docker/              : commands and setting for DOCKER container
+|- commands/              : scripts for HOST setup
+|- launcher/              : (ROS) launch files for container
+|- packages/              : ROS packages
+|- dockerfiles/           : dockerfile to build image
+|- docker/                : commands and setting for DOCKER container
 ダ
 |- hardware_setup       : documents for hardware setup
 |- rules                : udev rules
@@ -61,9 +61,9 @@ setup後、新しいプロジェクトを作成する場合は[開発の仕方](
 各フォルダの詳細
 |フォルダ名（パッケージ名）|概要|
 |:--|:--|
-|[0_host_commands](./0_host_commands/README_SYSTEMD.md)|systemdへのservice の登録関係フォルダ|
-|[2_ros_packages](./2_ros_packages/README_ROS.md)|ROSパッケージをまとめたフォルダ群|
-|[4_docker](./4_docker/README_DOCKER.md) | 自律制御システムを動かすためのDocker Imageの環境設定ファイル群 |
+|[commands](./commands/README_SYSTEMD.md)|systemdへのservice の登録関係フォルダ|
+|[packages](./packages/README_ROS.md)|ROSパッケージをまとめたフォルダ群|
+|[docker](./docker/README_DOCKER.md) | 自律制御システムを動かすためのDocker Imageの環境設定ファイル群 |
 
 ## システム構成
 
@@ -119,7 +119,7 @@ git switch "$BRANCH"
 ```bash
 PROJECT="$PROJECT"
 # "$PROJECT" : drone, bos, bos_robot, whill, leg-wheel, rover, turtlebot
-cd ~/ros2/0_host_commands
+cd ~/ros2/commands
 bash setup.sh $PROJECT
 source ~/.bashrc
 (sudo reboot )
@@ -147,7 +147,7 @@ dps
 
 ## Debug用コマンド
 
-4_docker/common/scripts 内の便利コマンド
+docker/common/scripts 内の便利コマンド
 
 ```bash
 # = git pull + commitしていない編集の削除 + 権限関係の整理
@@ -160,7 +160,7 @@ dstop all # すべてのコンテナ停止
 
 # = docker compose up common -d + hostnameの設定
 dup <container_name>
-dup all # 0_host_commands/project_launch.sh を実行
+dup all # commands/project_launch.sh を実行
 # = docker compose exec common bash
 din <container_name>
 # コンテナ内で表示される中身についての表示（末尾１０行を継続表示）
@@ -175,7 +175,7 @@ dimages
 drmi <image_name>
 ```
 
-0_host_commands/setup.sh を実行時にうまくいかないとき　systemd 関係のlog を確認するのに使えるコマンド
+commands/setup.sh を実行時にうまくいかないとき　systemd 関係のlog を確認するのに使えるコマンド
 
 ```bash
 > journalctl -xeu project_launch.service
@@ -192,7 +192,7 @@ drmi <image_name>
 ### プロジェクトの追加
 プロジェクトは**一つの計算機**上で実行するコンテナ群を管理するもの
 
-1. vim 0_host_commands/project_launch_"$PROJECT"_sh<br>
+1. vim commands/project_launch_"$PROJECT"_sh<br>
 内容はPROJECT名、ROS_DOMAIN_ID。
 ```bash
 # sample project_launch_whill_sh
@@ -200,9 +200,9 @@ export PROJECT=whill
 export ROS_DOMAIN_ID=11
 ```
 2. bash setup.sh "$PROEJCT" <br>
-systemdへproject_launch_"$PROJECT"_shを登録。ROS_DOMAIN_ID,　関連コマンド群のパスを.bashrcに登録
+systemdへproject_launch_"$PROJECT"_shを登録。ROS_DOMAIN_ID, 関連コマンド群のパスを.bashrcに登録
 3. source ~/.bashrc <br>
-4. vim 4_docker/dockerfiles/dockerfile."$EXT" (optional)<br>
+4. vim dockerfiles/dockerfile."$EXT" (optional)<br>
 必要に応じてイメージを拡張するファイルを追加<br>
 5. dsbuild <br>
 image_"$PROJECT" タグのdocker image作成<br>
@@ -219,13 +219,13 @@ dev> rbuild "$PACKAGE" # 自作パッケージのbuild
 # 詳細なデバックをする場合はVSCodeでアタッチしてデバックする。
 ```
 container内の /root/project_ws/src/ros_packages/にパッケージ追加<br>
-/root/project_ws/src/ros_packages/ は　2_ros_packages と同期されている。<br>
+/root/project_ws/src/ros_packages/ は　packages と同期されている。<br>
 動作するようになったら以下のファイルを追加する。<br>
-- 1_launcher/launch_"$CONTAINER".sh
+- launcher/launch_"$CONTAINER".sh
 - "$PROJECT".rules (optional)
 1で作成した project_launch_"$PROJECT"_sh に コンテナ起動用コマンドを追加し、2,3 を実行する。
 8. build_project "$PACKAGES"<br>
-"$PACKAGES"を指定しない場合は2_ros_packages内のすべてをcolcon buildする
+"$PACKAGES"を指定しない場合はpackages内のすべてをcolcon buildする
 7で作成した自作パッケージをimage_"$PROJECT"としてbuildした状態のimageに更新
 
 9. docker hubに登録(optional)
@@ -256,7 +256,7 @@ devコンテナで機能することが確認できたらdockerfileに追加し�
 
 ```bash
 # dockerfileに追加　エディタは何でも良い
-vim ~/ros2/4_docker/dockerfiles/dockerfile."$project"
+vim ~/ros2/dockerfiles/dockerfile."$project"
 # image_"$project" イメージを作成
 docker compose build "$project" (--no-cache)
 ```
@@ -269,9 +269,9 @@ aptで python3-pandas をインストールしておく。
 
 ```bash
 # pklファイルダウンロード
-~/ros2/0_host_commands/scripts/get_data 73
+~/ros2/commands/scripts/get_data 73
 # sample.pyでfigure.pdf作成
-python3 ~/ros2/2_ros_packages/acs/acs/Plotter/sample.py
+python3 ~/ros2/packages/acs/acs/Plotter/sample.py
 # . を指定して実行すると currentフォルダにfigure.pdfができる。
 cp figure.pdf ~/Downloads/
 ```

@@ -10,7 +10,7 @@ services:
     build:
       context: .
       dockerfile: ${DF} # 実行するdockerfile指定
-      #dockerfile: ${DOCKERFILE:-$ACSL_WORK_DIR/3_dockerfiles${TARGET}/dockerfile.${DF:-build}} # 実行するdockerfile指定      
+      #dockerfile: ${DOCKERFILE:-$ACSL_WORK_DIR/dockerfiles${TARGET}/dockerfile.${DF:-build}} # 実行するdockerfile指定
       args:
         ROS_DISTRO: ${ROS_DISTRO:-humble} # ROS distribution
         BASE_IMAGE: $BASE_IMAGE # 元となるimage
@@ -68,10 +68,12 @@ services:
       # bind "host folder":"docker folder"
       - ${HOME}/.ssh:/root/.ssh
       - ./common:/common # common scripts
-      - $ACSL_WORK_DIR/1_launcher:/common/ros_launcher
+      - $ACSL_WORK_DIR/launcher:/common/ros_launcher
       - /dev:/dev # GPIO and USB devices
       - vscode-server:/root/.vscode-server # VScode setting (preserve VScode extension)
-      - $ACSL_WORK_DIR/2_ros_packages:/root/ros2_ws/src/ros_packages
+      - $ACSL_WORK_DIR/packages:/root/ros2_ws/src/ros_packages
+      - $ACSL_WORK_DIR/common:/root/ros2_ws/src/common:ro
+      - $ACSL_WORK_DIR/config:/root/ros2_ws/config:ro
       - $ACSL_WORK_DIR/.env:/root/ros2_ws/.env
       - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
       # WSL

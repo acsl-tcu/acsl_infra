@@ -3,7 +3,7 @@
 if [ ${HOSTNAME:0:1} == "D" ]; then
   ros_packages=$(ls ~/ros2_ws/src/ros_packages)
 else
-  ros_packages=$(grep -RhoP '(?<=<name>)[^<]+' $ACSL_WORK_DIR/2_ros_packages  | sort -u)
+  ros_packages=$(grep -RhoP '(?<=<name>)[^<]+' $ACSL_WORK_DIR/packages  | sort -u)
 fi
 
 echo ${ros_packages/README_ROS.md/}
