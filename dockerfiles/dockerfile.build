@@ -8,7 +8,8 @@ SHELL [ "/bin/bash","-c" ]
 RUN mkdir -p /root/ros2_ws/src && cd /root/ros2_ws/ \
 	&& rm -f /etc/ros/rosdep/sources.list.d/20-default.list \
 	&& rosdep init \
-	&& rosdep update && rosdep install -i --from-path src --rosdistro ${ROS_DISTRO} 
+	&& rosdep update --rosdistro ${ROS_DISTRO} \
+	&& rosdep install -i --from-path src --rosdistro ${ROS_DISTRO}
 
 RUN cd /root/ros2_ws/\
 	&& source /root/.venv/bin/activate \

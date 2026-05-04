@@ -32,7 +32,7 @@ RUN apt-get update -y && DEBIAN_FRONTEND=noninteractive apt-get install -y \
 
 FROM tools as ros2_py3
 
-# 2nd apt（非対話指定を忘れずに）
+# 2nd apt
 RUN apt-get update -y && DEBIAN_FRONTEND=noninteractive apt-get install -y \
   python3-numpy python3-scipy python3-pandas python3-numexpr \
   python3-matplotlib python3-serial python3-tk python3-smbus2 \
@@ -49,10 +49,13 @@ RUN python3 -m venv --system-site-packages "$VIRTUAL_ENV"
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 # venv の pip を明示してアップデート & 追加パッケージ
-RUN python -m pip install --no-cache-dir -U pip setuptools wheel colcon-common-extensions \
-  && pip install -U dumb-init
+# setuptools を最新にして pkg_resources 警告を抑制
+RUN python -m pip install --no-cache-dir -U pip 'setuptools>=70' wheel colcon-common-extensions \
+  && pip install --no-cache-dir -U dumb-init
 
-RUN pip install --no-cache-dir numpy pyyaml \
+# blosc2 を先にインストールして tables の依存警告を解消
+# acsl フレームワーク (project_common)
+RUN pip install --no-cache-dir blosc2 numpy pyyaml \
   && pip install --no-cache-dir git+https://github.com/acsl-tcu/project_common.git@v0.5.1
 
 RUN mkdir -p /root/ros2_ws/src
