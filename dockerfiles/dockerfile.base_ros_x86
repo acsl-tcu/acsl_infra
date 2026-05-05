@@ -25,6 +25,7 @@ RUN apt-get update -y && DEBIAN_FRONTEND=noninteractive apt-get install -y \
   ros-${ROS_DISTRO}-tf-transformations \
   ros-${ROS_DISTRO}-rmw-cyclonedds-cpp \
   ros-${ROS_DISTRO}-rmw-fastrtps-cpp \
+  ros-${ROS_DISTRO}-navigation2 \
   && apt-get autoremove -y \
   && apt-get clean -y \
   && rm -rf /var/lib/apt/lists/* \
