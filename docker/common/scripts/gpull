@@ -29,9 +29,10 @@ else
   if [[ "$1" == "common" ]]; then
     cd $ACSL_WORK_DIR/common
     echo $(pwd)
+    chmod -R u+w $ACSL_WORK_DIR/common/
     git checkout .
     git pull
-    chmod -R a+rx $ACSL_WORK_DIR/common/
+    chmod -R a+rx,a-w $ACSL_WORK_DIR/common/
     exit 0
   fi
   if [[ $# -gt 0 ]]; then
