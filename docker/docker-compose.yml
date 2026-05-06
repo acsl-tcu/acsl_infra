@@ -75,6 +75,7 @@ services:
       - vscode-server:/root/.vscode-server # VScode setting (preserve VScode extension)
       - $ACSL_WORK_DIR/packages:/root/ros2_ws/src/ros_packages
       - $ACSL_WORK_DIR/common:/root/ros2_ws/src/common:ro
+      - $ACSL_WORK_DIR/Data:/root/ros2_ws/Data
       - $ACSL_WORK_DIR/config:/root/ros2_ws/config:ro
       - $ACSL_WORK_DIR/isaac_sim/config:/root/ros2_ws/isaac_sim/config:ro
       - $ACSL_WORK_DIR/.env:/root/ros2_ws/.env
