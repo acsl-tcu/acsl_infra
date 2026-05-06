@@ -1,18 +1,39 @@
 #! /usr/bin/bash
 
+source $ACSL_ROS2_DIR/docker/common/scripts/super_echo 2>/dev/null
+
 if [ ${HOSTNAME:0:1} == "D" ]; then
   # docker container 内の場合
   if [[ "$1" == "common" ]]; then
-    # project_common はコンテナ内の venv に pip install
-    echo "Updating project_common in container..."
-    pip install --no-cache-dir -U git+https://github.com/acsl-tcu/project_common.git
+    # 1. ホスト側: git pull + chmod
+    /common/scripts/hostbash "$ACSL_ROS2_DIR/docker/common/scripts/gpull $@"
+    # 2. コンテナ内: ローカルインストール
+    echo "Installing project_common from /workspace/common ..."
+    pip install --no-cache-dir /workspace/common
+    # 3. dcommit でイメージに反映
+    echo "Committing container to image..."
+    dcommit $TAG
+    recho "=========================================="
+    recho "  gpull common 完了（一時的な更新）"
+    recho "  正式リリース時は dockerfile の"
+    recho "  project_common バージョンタグを更新して"
+    recho "  dbuild してください"
+    recho "=========================================="
     exit 0
   fi
   /common/scripts/hostbash "$ACSL_ROS2_DIR/docker/common/scripts/gpull $@"
 else
-  # SBC 内の場合
+  # SBC / ホスト側の場合
   echo $1
   echo "------------------"
+  if [[ "$1" == "common" ]]; then
+    cd $ACSL_WORK_DIR/common
+    echo $(pwd)
+    git checkout .
+    git pull
+    chmod -R a+rx $ACSL_WORK_DIR/common/
+    exit 0
+  fi
   if [[ $# -gt 0 ]]; then
     cd $1
   else
