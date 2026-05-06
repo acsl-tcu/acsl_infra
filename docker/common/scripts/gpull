@@ -2,17 +2,17 @@
 
 if [ ${HOSTNAME:0:1} == "D" ]; then
   # docker container 内の場合
+  if [[ "$1" == "common" ]]; then
+    # project_common はコンテナ内の venv に pip install
+    echo "Updating project_common in container..."
+    pip install --no-cache-dir -U git+https://github.com/acsl-tcu/project_common.git
+    exit 0
+  fi
   /common/scripts/hostbash "$ACSL_ROS2_DIR/docker/common/scripts/gpull $@"
 else
   # SBC 内の場合
   echo $1
   echo "------------------"
-  # pip パッケージの更新
-  if [[ "$1" == "common" ]]; then
-    echo "Updating project_common via pip..."
-    pip install --no-cache-dir -U git+https://github.com/acsl-tcu/project_common.git
-    exit 0
-  fi
   if [[ $# -gt 0 ]]; then
     cd $1
   else
