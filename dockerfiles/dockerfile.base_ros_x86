@@ -57,6 +57,6 @@ RUN python -m pip install --no-cache-dir -U pip 'setuptools>=70' wheel colcon-co
 # blosc2 を先にインストールして tables の依存警告を解消
 # acsl フレームワーク (project_common)
 RUN pip install --no-cache-dir blosc2 numpy pyyaml \
-  && pip install --no-cache-dir git+https://github.com/acsl-tcu/project_common.git@v0.6.0
+  && pip install --no-cache-dir git+https://github.com/acsl-tcu/project_common.git@v0.7.0
 
 RUN mkdir -p /root/ros2_ws/src
