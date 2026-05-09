@@ -44,7 +44,13 @@ else
   if [[ -n $ftag ]]; then
     BASE_IMAGE=$ITAG
   fi
-  gecho "DBUILD: build tag:$OTAG FROM $BASE_IMAGE using $DF"
-  DOCKER_BUILDKIT=0 BASE_IMAGE=$BASE_IMAGE OTAG=$OTAG DF=$DF docker compose build image_build
-  # --no-cache
+  # --no-cache 検出: 最後の引数が --no-cache なら付与
+  NOCACHE=""
+  for arg in "$@"; do
+    if [[ "$arg" == "--no-cache" ]]; then
+      NOCACHE="--no-cache"
+    fi
+  done
+  gecho "DBUILD: build tag:$OTAG FROM $BASE_IMAGE using $DF ${NOCACHE}"
+  DOCKER_BUILDKIT=0 BASE_IMAGE=$BASE_IMAGE OTAG=$OTAG DF=$DF docker compose build ${NOCACHE} image_build
 fi
