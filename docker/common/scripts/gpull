@@ -33,6 +33,16 @@ else
     git checkout .
     git pull
     chmod -R a+rx,a-w $ACSL_WORK_DIR/common/
+    # 実行中コンテナ内で pip install + dcommit
+    container=$(docker ps --format '{{.Names}}' | head -1)
+    if [[ -n "$container" ]]; then
+      echo "pip install in container: $container"
+      docker exec "$container" pip install --no-cache-dir /root/ros2_ws/src/common
+      echo "dcommit..."
+      dcommit $(docker inspect --format '{{.Config.Image}}' "$container" | cut -d: -f2) 2>/dev/null
+    else
+      echo "No running container. Start one first, then run gpull common again."
+    fi
     exit 0
   fi
   if [[ $# -gt 0 ]]; then
