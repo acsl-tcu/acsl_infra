@@ -52,8 +52,10 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 RUN python -m pip install --no-cache-dir -U pip 'setuptools<68' wheel colcon-common-extensions \
   && pip install -U dumb-init
 
-RUN pip install git+https://github.com/acsl-tcu/project_common.git@v0.7.0
+RUN pip install control git+https://github.com/acsl-tcu/project_common.git@v0.7.0
 
+# --- developing (リリース時はこのセクションを削除) ---
 RUN pip install control
+# --- developing end ---
 
 RUN mkdir -p /root/ros2_ws/src
