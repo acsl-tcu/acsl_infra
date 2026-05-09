@@ -49,8 +49,12 @@ else
     cp -p bashrc ~/tttt
   fi
   git checkout .
-  git pull --recurse-submodules
-  git submodule update --init --recursive
+  if [[ "$1" == "full" ]]; then
+    git pull --recurse-submodules
+    git submodule update --init --recursive
+  else
+    git pull
+  fi
   echo "chmod in ${ACSL_WORK_DIR}"
   chmod -R a+x $ACSL_WORK_DIR/launcher/
   chmod -R a+x $ACSL_WORK_DIR/project_launch*
