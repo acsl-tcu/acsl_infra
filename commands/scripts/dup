@@ -5,6 +5,23 @@
 # dup dev : simple up acsl-common:image_${PROJECT}${TARGET}
 source $ACSL_ROS2_DIR/bashrc
 OPT=""
+if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+  if [[ -z "$2" ]]; then
+    echo "Usage: dup [-h] <container_name> [args...]"
+    echo "  dup <name> [args]   : launch container"
+    echo "  dup -h <name>       : show launcher help"
+    echo "  dup all             : launch all containers"
+    echo "  dup dev             : launch dev container"
+    exit 0
+  fi
+  ROS_LAUNCH=$(ls -v $ACSL_WORK_DIR/launcher/ 2>/dev/null | grep launch_$2 | fmt | awk '{print $NF}')
+  if [[ -n "$ROS_LAUNCH" ]]; then
+    $ACSL_WORK_DIR/launcher/$ROS_LAUNCH -h
+  else
+    echo "Launcher not found for '$2'"
+  fi
+  exit 0
+fi
 if [[ "$1" =~ ^--image= ]]; then
   OPT=$(echo $1 | sed -e 's/^--image=//')
   shift
