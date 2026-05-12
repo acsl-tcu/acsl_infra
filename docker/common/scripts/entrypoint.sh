@@ -10,8 +10,8 @@ ROS_DISTRO=${tmp[0]}
 
 ### Define the process when stopping the container
 function stop_container_process() {
-  if [[ -f /common/scripts/stop${TARGET} ]]; then
-    /common/scripts/stop${TARGET}
+  if [[ -f /common/scripts/stop ]]; then
+    /common/scripts/stop
   fi
   # コンテナ内で生成されたファイルがroot権限になるのを防ぐ処理
   chmod -R a+wr /root/ros2_ws/launcher/rosbags/*

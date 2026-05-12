@@ -1,7 +1,7 @@
 #! /usr/bin/bash
 
 # cd $ACSL_ROS2_DIR/docker
-# COMPOSE_PROJECT_NAME=${1,,}_${PROJECT,,}${TARGET,,} docker compose exec common bash
+# COMPOSE_PROJECT_NAME=${1,,}_${PROJECT,,} docker compose exec common bash
 if [[ "$1" =~ ^--image= ]]; then
   shift
 fi

@@ -7,18 +7,16 @@ if [ ${HOSTNAME:0:1} == "D" ]; then
   echo $@
   eval "$@"
 else
-  #str=$(dps | grep "dev${TARGET} " | grep Up)
   str=$(dps | grep -v Exited | awk '{print $NF}' | sed -e 's/NAMES//' | grep -s ${1})
   if [[ -z $str ]]; then
-    dup dev${TARGET}
-    container=dev${TARGET}
+    dup dev
+    container=dev
     cmd=$@
   else
     container=${str}
     cmd=${@:2:($# - 1)}
   fi
   source $ACSL_ROS2_DIR/docker/common/scripts/super_echo
-  gecho IN:${container,,} RID:${ROS_DOMAIN_ID} PROJECT:${PROJECT}${TARGET}${x86}
-  #_${PROJECT,,}${TARGET,,}
-  COMPOSE_PROJECT_NAME=${container,,}_${PROJECT,,}${TARGET,,} docker compose exec common /common/scripts/Dcmd ${cmd[@]}
+  gecho IN:${container,,} RID:${ROS_DOMAIN_ID} PROJECT:${PROJECT}${x86}
+  COMPOSE_PROJECT_NAME=${container,,}_${PROJECT,,} docker compose exec common /common/scripts/Dcmd ${cmd[@]}
 fi

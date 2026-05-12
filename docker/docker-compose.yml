@@ -10,7 +10,7 @@ services:
     build:
       context: .
       dockerfile: ${DF} # 実行するdockerfile指定
-      #dockerfile: ${DOCKERFILE:-$ACSL_WORK_DIR/dockerfiles${TARGET}/dockerfile.${DF:-build}} # 実行するdockerfile指定
+      #dockerfile: ${DOCKERFILE:-$ACSL_WORK_DIR/dockerfiles/dockerfile.${DF:-build}} # 実行するdockerfile指定
       args:
         ROS_DISTRO: ${ROS_DISTRO:-humble} # ROS distribution
         BASE_IMAGE: $BASE_IMAGE # 元となるimage
@@ -44,9 +44,8 @@ services:
     environment:
       # set environment variable on docker 
       - PROJECT=${PROJECT}
-      - TARGET=${TARGET}
       - CONTAINER_NAME=${COMPOSE_PROJECT_NAME:-dev}
-      - TAG=${TAG:-image_${PROJECT}${TARGET}}
+      - TAG=${TAG:-image_${PROJECT}}
       - HOST_USER=$LOGNAME # deprecate 
       - ROS_DOMAIN_ID=${ROS_DOMAIN_ID} # set project unique id
       - USER=$USER

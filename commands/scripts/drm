@@ -30,8 +30,8 @@ generate_rosbag() {
 source $ACSL_ROS2_DIR/docker/common/scripts/super_echo
 if [ $# -ge 1 ]; then
   if [ $1 = "all" ]; then
-    if [[ -f "${ACSL_WORK_DIR}/stop${TARGET}" ]]; then
-      ${ACSL_WORK_DIR}/stop${TARGET}
+    if [[ -f "${ACSL_WORK_DIR}/stop" ]]; then
+      ${ACSL_WORK_DIR}/stop
     fi
     containers=$(docker ps -a | awk '{print $NF}' | sed -e 's/NAMES//')
     for item in ${containers[@]}; do

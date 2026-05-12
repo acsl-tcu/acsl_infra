@@ -10,7 +10,7 @@ if [[ "$1" =~ ^--image= ]]; then
   IMAGE=$(echo $1 | sed -e 's/^--image=//')
   shift
 else
-  TAG=image_${PROJECT}${TARGET}${x86}
+  TAG=image_${PROJECT}${x86}
   IMAGE=kasekiguchi/acsl-common:${TAG}
 fi
 

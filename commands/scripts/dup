@@ -2,7 +2,7 @@
 # arg1 : target container_name,  arg2- (option) : argument for ros node launch
 # Example :
 # dup acs tokyu debug : run tokyu project in debug mode
-# dup dev : simple up acsl-common:image_${PROJECT}${TARGET}
+# dup dev : simple up acsl-common:image_${PROJECT}
 source $ACSL_ROS2_DIR/bashrc
 OPT=""
 if [[ "$1" == "-h" || "$1" == "--help" ]]; then
@@ -41,7 +41,7 @@ source $ACSL_ROS2_DIR/bashrc
 gecho "DUP ${ROS_DOMAIN_ID}: $OPT : $1 : ${@:2:($# - 1)}"
 if [ $# -ge 1 ]; then
   if [ $1 = "all" ]; then
-    $ACSL_WORK_DIR/project_launch${TARGET}.sh ${@:2:($# - 1)}
+    $ACSL_WORK_DIR/project_launch.sh ${@:2:($# - 1)}
   else
     launch_args=${@:2:($# - 1)}
     CONTAINER_NAME=$1
@@ -59,11 +59,11 @@ if [ $# -ge 1 ]; then
     exist_image=$(docker images kasekiguchi/acsl-common:${cimage} | grep ${cimage})
     echo "Search image: ${cimage}         Found: $exist_image "
     if [[ -z $exist_image ]]; then
-      exist_image=$(docker images kasekiguchi/acsl-common | grep image_${PROJECT}${TARGET}${x86})
+      exist_image=$(docker images kasekiguchi/acsl-common | grep image_${PROJECT}${x86})
       if [[ -z $exist_image ]]; then
         TAG=base${x86}
       else
-        TAG=image_${PROJECT}${TARGET}${x86}
+        TAG=image_${PROJECT}${x86}
       fi
       echo "== image ${cimage} does NOT exists. Use ${TAG} alternatively."
     else
@@ -76,17 +76,17 @@ if [ $# -ge 1 ]; then
       cp $ACSL_ROS2_DIR/launcher/launch_dev.sh $ACSL_WORK_DIR/launcher/
       chmod a+x $ACSL_WORK_DIR/launcher/launch_dev.sh
       ROS_LAUNCH=launch_dev.sh
-      CONTAINER_NAME=dev${TARGET}
+      CONTAINER_NAME=dev
     fi
 
     str=$(dps | grep -v Exited | awk '{print $NF}' | sed -e 's/NAMES//' | grep ^${CONTAINER_NAME})
     echo $str
     if [[ -z $str ]]; then
-      echo "TAG=$TAG CONTAINER_NAME=${CONTAINER_NAME} COMPOSE_PROJECT_NAME=${CONTAINER_NAME,,}_${PROJECT,,}${TARGET,,} ROS_LAUNCH=$ROS_LAUNCH LARGS=$launch_args HOSTNAME=$(hostname | sed -e 's/-/_/g') docker compose ${compose} up common -d"
-      TAG=${TAG} CONTAINER_NAME=${CONTAINER_NAME} COMPOSE_PROJECT_NAME=${CONTAINER_NAME,,}_${PROJECT,,}${TARGET,,} ROS_LAUNCH=$ROS_LAUNCH LARGS=$launch_args HOSTNAME=$(hostname | sed -e 's/-/_/g') docker compose ${compose} up common -d
+      echo "TAG=$TAG CONTAINER_NAME=${CONTAINER_NAME} COMPOSE_PROJECT_NAME=${CONTAINER_NAME,,}_${PROJECT,,} ROS_LAUNCH=$ROS_LAUNCH LARGS=$launch_args HOSTNAME=$(hostname | sed -e 's/-/_/g') docker compose ${compose} up common -d"
+      TAG=${TAG} CONTAINER_NAME=${CONTAINER_NAME} COMPOSE_PROJECT_NAME=${CONTAINER_NAME,,}_${PROJECT,,} ROS_LAUNCH=$ROS_LAUNCH LARGS=$launch_args HOSTNAME=$(hostname | sed -e 's/-/_/g') docker compose ${compose} up common -d
     else
-      echo "COMPOSE_PROJECT_NAME=${CONTAINER_NAME,,}_${PROJECT,,}${TARGET,,} docker compose exec common /common/ros_launcher/$ROS_LAUNCH $launch_args"
-      COMPOSE_PROJECT_NAME=${CONTAINER_NAME,,}_${PROJECT,,}${TARGET,,} docker compose exec common /common/ros_launcher/$ROS_LAUNCH $launch_args
+      echo "COMPOSE_PROJECT_NAME=${CONTAINER_NAME,,}_${PROJECT,,} docker compose exec common /common/ros_launcher/$ROS_LAUNCH $launch_args"
+      COMPOSE_PROJECT_NAME=${CONTAINER_NAME,,}_${PROJECT,,} docker compose exec common /common/ros_launcher/$ROS_LAUNCH $launch_args
       #exec common /common/scripts/Dcmd ${cmd[@]}
     fi
   fi

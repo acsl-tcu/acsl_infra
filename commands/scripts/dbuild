@@ -19,7 +19,7 @@ set -- "${ARGS[@]}"
 if [ $# -eq 0 ]; then
   echo "Build docker image"
   echo "[Usage]"
-  echo "dbuild  : build image_${PROJECT}${TARGET} from base image using dockerfile.build"
+  echo "dbuild  : build image_${PROJECT} from base image using dockerfile.build"
   echo "dbuild drone : build image_drone from base image using dockerfile.build"
   echo "dbuild A B : build image B from image/tag A using dockerfile.build"
   echo "dbuild A B DF : build image B from image/tag A using DF"
