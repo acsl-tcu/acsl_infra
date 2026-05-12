@@ -9,7 +9,7 @@ if [ ${HOSTNAME:0:1} == "D" ]; then
     /common/scripts/hostbash "$ACSL_ROS2_DIR/docker/common/scripts/gpull $@"
     # 2. コンテナ内: ローカルインストール
     echo "Installing project_common from /workspace/common ..."
-    cp -r /workspace/common /tmp/_common && pip install --no-cache-dir /tmp/_common && rm -rf /tmp/_common
+    cp -r /workspace/common /tmp/_common && pip install --no-cache-dir --force-reinstall --no-deps /tmp/_common && rm -rf /tmp/_common
     # 3. dcommit でイメージに反映
     echo "Committing container to image..."
     dcommit $TAG
@@ -37,7 +37,7 @@ else
     container=$(docker ps --format '{{.Names}}' | head -1)
     if [[ -n "$container" ]]; then
       echo "pip install in container: $container"
-      docker exec "$container" bash -c "cp -r /root/ros2_ws/src/common /tmp/_common && pip install --no-cache-dir /tmp/_common && rm -rf /tmp/_common"
+      docker exec "$container" bash -c "cp -r /root/ros2_ws/src/common /tmp/_common && pip install --no-cache-dir --force-reinstall --no-deps /tmp/_common && rm -rf /tmp/_common"
       echo "dcommit..."
       dcommit $(docker inspect --format '{{.Config.Image}}' "$container" | cut -d: -f2) 2>/dev/null
     else
