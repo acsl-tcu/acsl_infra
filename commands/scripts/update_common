@@ -1,0 +1,30 @@
+#!/usr/bin/bash
+# メインイメージ (image_${PROJECT}_x86) に最新の project_common を pip install する
+# setup full の dbuild 直後に呼ぶことを想定
+# [usage]
+# update_common              : image_${PROJECT}_x86 を更新
+# update_common image_tag    : 指定イメージを更新
+
+source $ACSL_ROS2_DIR/bashrc
+source $ACSL_ROS2_DIR/docker/common/scripts/super_echo
+
+IMAGE=${1:-image_${PROJECT}${x86}}
+
+gecho "UPDATE_COMMON: install latest project_common into ${IMAGE}"
+
+dup --image=${IMAGE} dev
+sleep 2
+
+docker exec dev bash -c \
+  "cp -r /root/ros2_ws/src/common /tmp/_common \
+   && pip install --no-cache-dir --force-reinstall --no-deps /tmp/_common \
+   && rm -rf /tmp/_common"
+
+if [ $? -eq 0 ]; then
+  gecho "dcommit dev -> ${IMAGE}"
+  dcommit dev ${IMAGE}
+else
+  recho "pip install failed"
+fi
+
+drm dev

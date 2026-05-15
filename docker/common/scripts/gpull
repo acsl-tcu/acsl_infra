@@ -5,20 +5,8 @@ source $ACSL_ROS2_DIR/docker/common/scripts/super_echo 2>/dev/null
 if [ ${HOSTNAME:0:1} == "D" ]; then
   # docker container 内の場合
   if [[ "$1" == "common" ]]; then
-    # 1. ホスト側: git pull + chmod
+    # ホスト側で gpull common を実行（git pull + setup full）
     /common/scripts/hostbash "$ACSL_ROS2_DIR/docker/common/scripts/gpull $@"
-    # 2. コンテナ内: ローカルインストール
-    echo "Installing project_common from /workspace/common ..."
-    cp -r /workspace/common /tmp/_common && pip install --no-cache-dir --force-reinstall --no-deps /tmp/_common && rm -rf /tmp/_common
-    # 3. dcommit でイメージに反映
-    echo "Committing container to image..."
-    dcommit $TAG
-    recho "=========================================="
-    recho "  gpull common 完了（一時的な更新）"
-    recho "  正式リリース時は dockerfile の"
-    recho "  project_common バージョンタグを更新して"
-    recho "  dbuild してください"
-    recho "=========================================="
     exit 0
   fi
   /common/scripts/hostbash "$ACSL_ROS2_DIR/docker/common/scripts/gpull $@"
@@ -33,16 +21,9 @@ else
     git checkout .
     git pull
     chmod -R a+rx,a-w $ACSL_WORK_DIR/common/
-    # 実行中コンテナ内で pip install + dcommit
-    container=$(docker ps --format '{{.Names}}' | head -1)
-    if [[ -n "$container" ]]; then
-      echo "pip install in container: $container"
-      docker exec "$container" bash -c "cp -r /root/ros2_ws/src/common /tmp/_common && pip install --no-cache-dir --force-reinstall --no-deps /tmp/_common && rm -rf /tmp/_common"
-      echo "dcommit..."
-      dcommit $(docker inspect --format '{{.Config.Image}}' "$container" | cut -d: -f2) 2>/dev/null
-    else
-      echo "No running container. Start one first, then run gpull common again."
-    fi
+    # setup full でメインイメージ + サブイメージを再構築
+    cd $ACSL_WORK_DIR
+    ./setup full
     exit 0
   fi
   if [[ $# -gt 0 ]]; then
