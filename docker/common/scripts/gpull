@@ -59,4 +59,12 @@ else
     chmod -R a+x $ACSL_ROS2_DIR/commands/
     mv ~/tttt ./bashrc
   fi
+
+  # clone済み環境リポジトリを更新
+  for env_dir in $ACSL_WORK_DIR/isaac_sim/environments/*/; do
+    if [[ -d "${env_dir}.git" ]]; then
+      echo "gpull environment: ${env_dir}"
+      git -C "$env_dir" pull
+    fi
+  done
 fi

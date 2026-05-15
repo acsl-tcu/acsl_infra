@@ -1,11 +1,27 @@
 #! /usr/bin/bash
 
+source $ACSL_ROS2_DIR/docker/common/scripts/super_echo 2>/dev/null
+
+MSG="Commit from WORKING DIR by $USER@$HOSTNAME: $1"
+
+# プロジェクト本体
 echo "git push : $PROJECT"
 cd $ACSL_WORK_DIR
 sed -i "s|$ACSL_ROS2_DIR|\$ACSL_ROS2_DIR|g" $ACSL_WORK_DIR/project_launch*.sh
-
 git add .
-git commit -m "Commit from WORKING DIR by $USER@$HOSTNAME: $1"
+git commit -m "$MSG"
 sed -i "s|\$ACSL_ROS2_DIR|$ACSL_ROS2_DIR|g" $ACSL_WORK_DIR/project_launch*.sh
-
 git push
+
+# clone済み環境リポジトリ
+for env_dir in $ACSL_WORK_DIR/isaac_sim/environments/*/; do
+  if [[ -d "${env_dir}.git" ]]; then
+    changes=$(git -C "$env_dir" status --porcelain)
+    if [[ -n "$changes" ]]; then
+      echo "git push environment: ${env_dir}"
+      git -C "$env_dir" add .
+      git -C "$env_dir" commit -m "$MSG"
+      git -C "$env_dir" push
+    fi
+  fi
+done
