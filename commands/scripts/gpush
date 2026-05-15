@@ -2,13 +2,26 @@
 
 source $ACSL_ROS2_DIR/docker/common/scripts/super_echo 2>/dev/null
 
-MSG="Commit from WORKING DIR by $USER@$HOSTNAME: $1"
+# コミットメッセージ生成
+# 引数があればそれを使用、なければ変更内容から自動生成
+gen_commit_msg() {
+  local dir="$1"
+  local label="$2"
+  if [[ -n "$3" ]]; then
+    echo "$3"
+    return
+  fi
+  local stat=$(git -C "$dir" diff --cached --stat | tail -1)
+  local files=$(git -C "$dir" diff --cached --name-only | sed 's|.*/||' | paste -sd, -)
+  echo "[$label] ${stat}: ${files}"
+}
 
 # プロジェクト本体
 echo "git push : $PROJECT"
 cd $ACSL_WORK_DIR
 sed -i "s|$ACSL_ROS2_DIR|\$ACSL_ROS2_DIR|g" $ACSL_WORK_DIR/project_launch*.sh
 git add .
+MSG=$(gen_commit_msg "$ACSL_WORK_DIR" "$PROJECT" "$1")
 git commit -m "$MSG"
 sed -i "s|\$ACSL_ROS2_DIR|$ACSL_ROS2_DIR|g" $ACSL_WORK_DIR/project_launch*.sh
 git push
@@ -19,8 +32,10 @@ for env_dir in $ACSL_WORK_DIR/isaac_sim/environments/*/; do
     changes=$(git -C "$env_dir" status --porcelain)
     if [[ -n "$changes" ]]; then
       echo "git push environment: ${env_dir}"
+      env_name=$(basename "$env_dir")
       git -C "$env_dir" add .
-      git -C "$env_dir" commit -m "$MSG"
+      ENV_MSG=$(gen_commit_msg "$env_dir" "$env_name" "$1")
+      git -C "$env_dir" commit -m "$ENV_MSG"
       git -C "$env_dir" push
     fi
   fi
