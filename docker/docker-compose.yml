@@ -55,7 +55,6 @@ services:
       - HOST_PATH=$PATH
       - RMW_IMPLEMENTATION=rmw_${RMW:-fastrtps}_cpp
       - FASTDDS_BUILTIN_TRANSPORTS=${FASTDDS_BUILTIN_TRANSPORTS:-UDPv4}
-      - FASTRTPS_DEFAULT_PROFILES_FILE=${FASTRTPS_DEFAULT_PROFILES_FILE:-/root/ros2_ws/isaac_sim/config/fastdds_udp_no_shm.xml}
       - ROS_USE_SIM_TIME=${ROS_USE_SIM_TIME:-false}
       # WSL : thanks to : https://dev.classmethod.jp/articles/wsl2-docker-gui-app-windows-display/
       - DISPLAY=${DISPLAY}
