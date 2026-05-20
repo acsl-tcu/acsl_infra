@@ -25,6 +25,7 @@ RUN apt-get update -y && DEBIAN_FRONTEND=noninteractive apt-get install -y \
   ros-${ROS_DISTRO}-tf-transformations \
   ros-${ROS_DISTRO}-rmw-cyclonedds-cpp \
   ros-${ROS_DISTRO}-rmw-fastrtps-cpp \
+  ros-${ROS_DISTRO}-navigation2 \
   && apt-get autoremove -y \
   && apt-get clean -y \
   && rm -rf /var/lib/apt/lists/* \
@@ -49,9 +50,13 @@ RUN python3 -m venv --system-site-packages "$VIRTUAL_ENV"
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 # venv の pip を明示してアップデート & 追加パッケージ
-RUN python -m pip install --no-cache-dir -U pip 'setuptools<68' wheel colcon-common-extensions \
-  && pip install -U dumb-init
+# setuptools を最新にして pkg_resources 警告を抑制
+RUN python -m pip install --no-cache-dir -U pip 'setuptools>=70' wheel colcon-common-extensions \
+  && pip install --no-cache-dir -U dumb-init
 
-RUN pip install control git+https://github.com/acsl-tcu/project_common.git@v0.8.0
+# blosc2 を先にインストールして tables の依存警告を解消
+# acsl フレームワーク (project_common) + 共通 Python パッケージ
+RUN pip install --no-cache-dir blosc2 numpy pyyaml control \
+  && pip install --no-cache-dir git+https://github.com/acsl-tcu/project_common.git@v0.8.0
 
 RUN mkdir -p /root/ros2_ws/src
