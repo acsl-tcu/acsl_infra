@@ -69,6 +69,7 @@ services:
       - ${HOME}/.ssh:/root/.ssh
       - ./common:/common # common scripts
       - $ACSL_WORK_DIR/launcher:/common/ros_launcher
+      - $ACSL_WORK_DIR/isaac_sim/environments/bld10/occupancy:/common/occupancy # 占有格子 (建屋 environment に集約)
       - /dev:/dev # GPIO and USB devices
       - vscode-server:/root/.vscode-server # VScode setting (preserve VScode extension)
       - $ACSL_WORK_DIR/packages:/root/ros2_ws/src/ros_packages
