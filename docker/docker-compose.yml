@@ -56,6 +56,7 @@ services:
       - RMW_IMPLEMENTATION=rmw_${RMW:-fastrtps}_cpp
       - FASTDDS_BUILTIN_TRANSPORTS=${FASTDDS_BUILTIN_TRANSPORTS:-UDPv4}
       - ROS_USE_SIM_TIME=${ROS_USE_SIM_TIME:-false}
+      - ENV_BUILDING=${ENV_BUILDING:-bld10} # active 建屋名 (environment_<name>)
       # WSL : thanks to : https://dev.classmethod.jp/articles/wsl2-docker-gui-app-windows-display/
       - DISPLAY=${DISPLAY}
       - WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-0}
@@ -69,7 +70,13 @@ services:
       - ${HOME}/.ssh:/root/.ssh
       - ./common:/common # common scripts
       - $ACSL_WORK_DIR/launcher:/common/ros_launcher
-      - $ACSL_WORK_DIR/isaac_sim/environments/bld10/occupancy:/common/occupancy # 占有格子 (建屋 environment に集約)
+      # 建屋 environment を 1 本の親マウントで全コンテナにライブ配送 (複数建屋対応)
+      #   /root/environment/<name>/{config,occupancy,omni,...}
+      # rw: node_capture / save_map / serialize がコンテナから書く
+      - $ACSL_WORK_DIR/isaac_sim/environments:/root/environment
+      # 占有格子は active 建屋の occupancy を /common/occupancy にも別名 bind
+      # (launch_slam_toolbox.sh / launch_nav2.sh を無改修で建屋切替できるよう ENV_BUILDING で切替)
+      - $ACSL_WORK_DIR/isaac_sim/environments/${ENV_BUILDING:-bld10}/occupancy:/common/occupancy
       - /dev:/dev # GPIO and USB devices
       - vscode-server:/root/.vscode-server # VScode setting (preserve VScode extension)
       - $ACSL_WORK_DIR/packages:/root/ros2_ws/src/ros_packages
