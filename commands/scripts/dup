@@ -81,6 +81,13 @@ if [ $# -ge 1 ]; then
             break
           fi
         done
+        # ARG ベース dockerfile (FROM ${BASE_IMAGE} など) は dbuild で --build-arg
+        # 付きでビルドする想定。auto-build (docker build 単純呼出) では BASE_IMAGE
+        # が空になり失敗する。事前に skip する。
+        if [[ -n "$df_path" ]] && grep -qE '^[[:space:]]*FROM[[:space:]]+\$\{?[A-Z_]+' "$df_path"; then
+          gecho "== dockerfile.${cimage%_x86} has ARG-based FROM; skipping auto-build (use dbuild)"
+          df_path=""
+        fi
         if [[ -n "$df_path" ]]; then
           gecho "== image ${cimage} not found. Auto-building from $df_path ..."
           docker build \
