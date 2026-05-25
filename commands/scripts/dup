@@ -12,6 +12,15 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
     echo "  dup -h <name>       : show launcher help"
     echo "  dup all             : launch all containers"
     echo "  dup dev             : launch dev container"
+    echo ""
+    echo "Image resolution order for 'dup <name>':"
+    echo "  1. kasekiguchi/acsl-common:<name>_x86 (local)"
+    echo "  2. dockerfile.<name> (auto-build from \$ACSL_WORK_DIR/dockerfiles or"
+    echo "                       \$ACSL_ROS2_DIR/dockerfiles)"
+    echo "  3. image_<PROJECT>_x86 (fallback)"
+    echo "  4. base_x86 (last resort)"
+    echo ""
+    echo "Set DUP_NO_AUTOBUILD=1 to disable step 2 (CI / offline use)."
     exit 0
   fi
   ROS_LAUNCH=$(ls -v $ACSL_WORK_DIR/launcher/ 2>/dev/null | grep launch_$2 | fmt | awk '{print $NF}')
@@ -59,13 +68,43 @@ if [ $# -ge 1 ]; then
     exist_image=$(docker images kasekiguchi/acsl-common:${cimage} | grep ${cimage})
     echo "Search image: ${cimage}         Found: $exist_image "
     if [[ -z $exist_image ]]; then
-      exist_image=$(docker images kasekiguchi/acsl-common | grep image_${PROJECT}${x86})
-      if [[ -z $exist_image ]]; then
-        TAG=base${x86}
-      else
-        TAG=image_${PROJECT}${x86}
+      # Auto-build: dockerfile.<name> があれば自動ビルド (DUP_NO_AUTOBUILD=1 で無効化)
+      # name は cimage から _x86 を剥がしたもの (例: cimage=ardupilot_sitl_x86 → ardupilot_sitl)
+      if [[ "${DUP_NO_AUTOBUILD:-0}" != "1" ]]; then
+        df_name="dockerfile.${cimage%_x86}"
+        df_path=""
+        for d in "$ACSL_WORK_DIR/dockerfiles" "$ACSL_ROS2_DIR/dockerfiles"; do
+          if [[ -f "$d/$df_name" ]]; then
+            df_path="$d/$df_name"
+            break
+          fi
+        done
+        if [[ -n "$df_path" ]]; then
+          gecho "== image ${cimage} not found. Auto-building from $df_path ..."
+          docker build \
+            -t "kasekiguchi/acsl-common:${cimage}" \
+            -f "$df_path" \
+            "$(dirname "$df_path")"
+          if [[ $? -eq 0 ]]; then
+            exist_image=$(docker images kasekiguchi/acsl-common:${cimage} | grep ${cimage})
+          else
+            echo "== auto-build failed for ${cimage}"
+          fi
+        fi
       fi
-      echo "== image ${cimage} does NOT exists. Use ${TAG} alternatively."
+      # 既存フォールバック: auto-build できなかった場合は base/image_<PROJECT> を使う
+      if [[ -z $exist_image ]]; then
+        exist_image=$(docker images kasekiguchi/acsl-common | grep image_${PROJECT}${x86})
+        if [[ -z $exist_image ]]; then
+          TAG=base${x86}
+        else
+          TAG=image_${PROJECT}${x86}
+        fi
+        echo "== image ${cimage} does NOT exists. Use ${TAG} alternatively."
+      else
+        echo "== image ${cimage} ready (built or pulled)"
+        TAG=${cimage}
+      fi
     else
       echo "== image ${cimage} exists"
       TAG=${cimage}
