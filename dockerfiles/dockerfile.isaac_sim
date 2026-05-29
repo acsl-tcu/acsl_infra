@@ -1,0 +1,55 @@
+# Isaac Sim 6.0.0 + ROS2 Jazzy 用イメージ (共通: project_drone2 / project_rf_rover で共有)
+#
+# acsl_infra に集約。dbuild は $ACSL_ROS2_DIR/dockerfiles を先に探すので、各 project の
+# dockerfiles に同名ファイルを置かなくても `dbuild ... isaac_sim` で本ファイルが使われる。
+#
+# 目的: Isaac Sim 6 系の Kit Python は 3.12。ROS2 も Jazzy(Python 3.12) なので、
+#       公式 Isaac Sim 6 イメージに ROS2 Jazzy を載せれば、Kit 内で
+#       `import rclpy` が ABI 一致で通り、drone2 と同 distro で topic 通信できる。
+#       (Humble=3.10 は Kit 3.11/3.12 と不一致で import 不可だった。)
+#
+# 前提: 公式イメージの pull に NGC ログインが必要。
+#   docker login nvcr.io        # username: $oauthtoken / password: NGC API key
+#
+# ビルド: acsl の dbuild を使う (出力 = kasekiguchi/acsl-common:isaac-sim6-jazzy_x86)。
+#   dbuild nvcr.io/nvidia/isaac-sim:6.0.0-dev2 isaac-sim6-jazzy isaac_sim
+#     第1引数(base)は本 dockerfile では未使用 (FROM は下の ARG ISAAC_IMAGE 既定で固定。
+#       base_ros と同じく、外部レジストリ image は dbuild の BASE_IMAGE 解決に乗せない)。
+#     第2引数 = 出力 tag (→ kasekiguchi/acsl-common:<arg2>_x86)、第3引数 = dockerfile.<arg3>。
+#   (dbuild を使わない素の docker build なら:
+#     docker build -t kasekiguchi/acsl-common:isaac-sim6-jazzy_x86 \
+#         -f $ACSL_ROS2_DIR/dockerfiles/dockerfile.isaac_sim $ACSL_ROS2_DIR/dockerfiles)
+#
+# ベース OS: nvcr.io/nvidia/isaac-sim:6.0.0-dev2 は Ubuntu 24.04 (noble) 確認済み。
+#   → apt の jazzy(Python 3.12) がそのまま引け、Kit(3.12) と ABI 一致する。
+
+ARG ISAAC_IMAGE=nvcr.io/nvidia/isaac-sim:6.0.0-dev2
+FROM ${ISAAC_IMAGE}
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+
+# Isaac Sim 公式イメージは既定が非 root ユーザー(uid 1234)なので apt が
+# 権限エラーになる。以降は root で実行する (start_isaac_sim.sh も --allow-root 前提)。
+USER root
+
+# ROS2 Jazzy (ros-base + bridge が使うメッセージ型 + FastDDS rmw)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl gnupg2 lsb-release software-properties-common locales ca-certificates \
+    && locale-gen en_US.UTF-8 \
+    && add-apt-repository -y universe \
+    && curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+         -o /usr/share/keyrings/ros-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" \
+         > /etc/apt/sources.list.d/ros2.list \
+    && apt-get update && apt-get install -y --no-install-recommends \
+        ros-jazzy-ros-base \
+        ros-jazzy-rclpy \
+        ros-jazzy-nav-msgs \
+        ros-jazzy-geometry-msgs \
+        ros-jazzy-std-msgs \
+        ros-jazzy-rmw-fastrtps-cpp \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /isaac-sim
+ENTRYPOINT ["/bin/bash"]
