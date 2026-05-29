@@ -1,0 +1,71 @@
+#! /usr/bin/bash
+# Run px4-* module command inside px4_sitl container from host.
+#
+# project_drone2 の SITL_GZ_PX4 で起動する px4_sitl コンテナ内で動作中の
+# PX4 SITL daemon に対して、外から各 module wrapper を叩くための shortcut。
+#
+# PX4 は module 式 daemon で uORB IPC 経由で外部から status 確認や
+# command 発射ができる。各 module 用 wrapper binary が
+#   /root/PX4-Autopilot/build/px4_sitl_default/bin/px4-<module>
+# にあるので、それを `docker exec px4_sitl ...` で叩く処理を 1 行に短縮する。
+#
+# Usage:
+#   dpx4 commander status        # vehicle 全体の状態 (mode/armed/health)
+#   dpx4 commander check         # preflight チェックを今すぐ実行
+#   dpx4 commander preflight_check
+#   dpx4 gz_bridge status        # Gazebo bridge module 状態
+#   dpx4 mavlink status          # MAVLink stream 状態
+#   dpx4 ekf2 status             # EKF2 推定状態
+#   dpx4 sensors status          # sensor pipeline 状態
+#   dpx4 listener vehicle_status # uORB topic を 1 回 dump
+#   dpx4 uorb top -1             # uORB topic publish rate ランキング
+#   dpx4 param show COM_*        # parameter 値表示 (wildcard 可)
+#   dpx4 param set COM_X Y       # parameter 設定 (注: 永続化は別)
+#   dpx4 -h                      # この help (running なら module 一覧も)
+#
+# 前提:
+#   - px4_sitl コンテナが running (dup all SITL_GZ_PX4 で起動済)
+#   - 内部の px4 SITL build path が固定: /root/PX4-Autopilot/build/px4_sitl_default/bin/
+#
+# ArduPilot 用の同等コマンドは無い (AP SITL は単一 binary で module CLI 出さない)。
+# SITL_AP のデバッグは MAVProxy 端末 / MAVROS service / dataflash log を使う。
+
+CONTAINER=px4_sitl
+PX4_BIN_DIR=/root/PX4-Autopilot/build/px4_sitl_default/bin
+
+if [[ "$1" == "-h" || "$1" == "--help" || -z "$1" ]]; then
+  cat <<'USAGE'
+Usage: dpx4 <module> [args...]
+  Run px4-<module> inside px4_sitl container.
+
+Examples:
+  dpx4 commander status         # vehicle 状態 (mode / armed / health)
+  dpx4 commander check          # preflight チェック
+  dpx4 gz_bridge status         # Gazebo bridge 状態 (Issue #81 diag)
+  dpx4 mavlink status           # MAVLink stream 状態
+  dpx4 ekf2 status              # EKF2 推定状態
+  dpx4 listener vehicle_status  # uORB topic を 1 回 dump
+  dpx4 uorb top -1              # uORB rate ランキング
+  dpx4 param show COM_*         # parameter 表示
+
+Requires px4_sitl container running (dup all SITL_GZ_PX4).
+USAGE
+  if docker inspect -f '{{.State.Running}}' ${CONTAINER} >/dev/null 2>&1; then
+    echo ""
+    echo "Available px4-* modules in ${CONTAINER}:"
+    docker exec ${CONTAINER} ls ${PX4_BIN_DIR} 2>/dev/null \
+      | grep '^px4-' | sed 's/^px4-/  /' | head -60
+  else
+    echo ""
+    echo "(${CONTAINER} not running — start with: dup all SITL_GZ_PX4)"
+  fi
+  exit 0
+fi
+
+if ! docker inspect -f '{{.State.Running}}' ${CONTAINER} >/dev/null 2>&1; then
+  echo "[dpx4] ERROR: container '${CONTAINER}' is not running." >&2
+  echo "[dpx4]        Start it first: dup all SITL_GZ_PX4" >&2
+  exit 1
+fi
+
+exec docker exec ${CONTAINER} "${PX4_BIN_DIR}/px4-$1" "${@:2}"
