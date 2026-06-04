@@ -3,6 +3,9 @@
 # Example :
 # dup acs tokyu debug : run tokyu project in debug mode
 # dup dev : simple up acsl-common:image_${PROJECT}
+# bashrc を source すると ROS_DOMAIN_ID がファイル値で上書きされるので、
+# RID 整合チェック用に「呼び出し元シェルが持っていた値」を先に退避する。
+_caller_rid="${ROS_DOMAIN_ID}"
 source $ACSL_ROS2_DIR/bashrc
 OPT=""
 if [[ "$1" == "-h" || "$1" == "--help" ]]; then
@@ -49,8 +52,48 @@ fi
 source $ACSL_ROS2_DIR/docker/common/scripts/super_echo
 source $ACSL_ROS2_DIR/bashrc
 
+# 呼び出し元シェルが持っていた RID と設定ファイル($ACSL_ROS2_DIR/bashrc)の RID が
+# 食い違っている場合に通知する。別端末で setrid した後など、手元シェルが古い RID の
+# まま取り残されているケースを検知する (dup 自体は常にファイル値で起動する)。
+if [ -n "$_caller_rid" ] && [ "$_caller_rid" != "$ROS_DOMAIN_ID" ]; then
+  recho "注意: このシェルの ROS_DOMAIN_ID(${_caller_rid}) と設定ファイルの RID(${ROS_DOMAIN_ID}) が異なります。"
+  recho "      dup は設定ファイルの ${ROS_DOMAIN_ID} で起動します。手元シェルを合わせる: source \$ACSL_ROS2_DIR/bashrc"
+fi
+
+# ===== RID 日次確認ゲート (実験機暴走防止) =====
+# 1 日 1 回、または RID が変わった直後に、起動前へ現在の ROS_DOMAIN_ID を確認させる。
+#   - 確認状態は $ACSL_ROS2_DIR/.acsl/rid_confirmed に "日付 RID" で保存
+#   - 非対話(systemd 自動起動 / CI)では read で固まらないようスキップ
+#   - DUP_SKIP_RID_CHECK=1 で明示的に無効化可
+#   - dup all 経由の連続 dup は、最初の確認でスタンプ更新済みのため 2 回目以降スキップ
+_rid_daily_gate() {
+  [ -t 0 ] || return 0
+  [ "${DUP_SKIP_RID_CHECK:-0}" = "1" ] && return 0
+  local stamp="$ACSL_ROS2_DIR/.acsl/rid_confirmed" today sd sr
+  today=$(date +%F)
+  [ -f "$stamp" ] && read -r sd sr _ <"$stamp"
+  if [ "$sd" = "$today" ] && [ "$sr" = "$ROS_DOMAIN_ID" ]; then
+    return 0
+  fi
+  recho "========================== RID 確認 =========================="
+  recho "  PROJECT=${PROJECT}   ROS_DOMAIN_ID=${ROS_DOMAIN_ID}"
+  recho "  RID コンタミによる実験機の暴走防止のため 1 日 1 回確認します。"
+  recho "  変更する場合は n で中断し  setrid <1-99>  を実行してください。"
+  local ans
+  read -r -p "  この RID(${ROS_DOMAIN_ID}) で起動してよいですか? [y/N] " ans
+  if [[ "$ans" =~ ^[Yy]$ ]]; then
+    mkdir -p "$(dirname "$stamp")"
+    printf '%s %s\n' "$today" "$ROS_DOMAIN_ID" >"$stamp"
+    gecho "  確認しました (RID=${ROS_DOMAIN_ID})。"
+  else
+    recho "  中断しました。setrid <1-99> で RID を設定し直してください。"
+    exit 1
+  fi
+}
+
 gecho "DUP ${ROS_DOMAIN_ID}: $OPT : $1 : ${@:2:($# - 1)}"
 if [ $# -ge 1 ]; then
+  _rid_daily_gate
   if [ $1 = "all" ]; then
     $ACSL_WORK_DIR/project_launch.sh ${@:2:($# - 1)}
   else

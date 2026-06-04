@@ -89,7 +89,7 @@
 - READMEの名前変更 README_SYSTEM, README_DOCKER, README_ROSなど
 - humble化
 - IP 固定化
-- ROS_DOMAIN_IDの固定化
+- ~~ROS_DOMAIN_IDの固定化~~ → `setrid <1-99>` で変更 + `dup` 日次確認ゲートを実装 (README「RID (ROS_DOMAIN_ID) の管理」参照)
 - Command_list.txtを適切なファイルに統合し削除
 
 - 要確認

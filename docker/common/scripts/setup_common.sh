@@ -2,7 +2,9 @@
 ########## Terminal Notice #######
 echo "source /common/scripts/super_echo" >>~/.bashrc
 ### ROS domain
-echo "recho ROS_DOMAIN_ID : $ROS_DOMAIN_ID" >>~/.bashrc
+# シングルクォートで遅延展開: din 時の実 env を表示する (restart で RID を変えても追従)。
+# entrypoint の "ROS_DOMAIN_ID で setup 済み判定" の grep にも文字列としてヒットする。
+echo 'recho ROS_DOMAIN_ID : $ROS_DOMAIN_ID' >>~/.bashrc
 
 # PATH
 echo "export PATH=/common/scripts:${PATH}" >>/root/.bashrc

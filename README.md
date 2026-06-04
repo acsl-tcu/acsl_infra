@@ -181,6 +181,47 @@ commands/setup.sh を実行時にうまくいかないとき　systemd 関係の
 > journalctl -xeu project_launch.service
 ```
 
+## RID (ROS_DOMAIN_ID) の管理
+
+RID (`ROS_DOMAIN_ID`) は ROS2 の通信名前空間を分離する ID。**RID が混ざる (コンタミ) と、
+シミュレーション中のつもりが実験機に指令が飛び暴走する**等の重大事故につながる。
+そのため「**一人一つの RID** を持ち、シミュレーションでも実験でも必ず自分の RID を対象にする」運用とする。
+
+### RID を変える: `setrid <1-99>`
+
+```bash
+setrid 42      # ROS_DOMAIN_ID を 42 に変更 (1-99 の整数)
+```
+
+- `$ACSL_ROS2_DIR/bashrc` の `export ROS_DOMAIN_ID` を書き換え、以後の `dup` に反映。
+- 現在の対話シェルにも即 `export` され、プロンプト `[PROJECT<RID>]` の表示も更新される。
+- 実行すると「本日分の RID 確認」も同時に済んだ扱いになる。
+- `setrid` は (スクリプトでなく) `completions.sh` で定義されるシェル関数。
+  新しい端末では自動で有効。既存端末では `source ~/.bashrc` するか `dup` 再起動で読み込まれる。
+
+> **反映にはコンテナの再生成が必要。** RID はイメージに焼き込まれず `dup` 起動時にコンテナへ
+> 注入される。稼働中コンテナの RID を変えるには `drestart <name>` (= `drm` + `dup`)、
+> もしくは `drm <name> && dup <name>`。素の `docker restart` は旧 RID のまま起動するので不可。
+
+### 日次 RID 確認 (`dup` のゲート)
+
+`dup` は起動前に **1 日 1 回**、または RID が変わった直後に現在の RID を確認するプロンプトを出す。
+
+```
+========================== RID 確認 ==========================
+  PROJECT=rf   ROS_DOMAIN_ID=87
+  この RID(87) で起動してよいですか? [y/N]
+```
+
+- `y` で続行し `$ACSL_ROS2_DIR/.acsl/rid_confirmed` に `日付 RID` を記録。同日同 RID の以後の `dup` は無確認で続行。
+- それ以外は中断。`setrid <1-99>` で設定し直す。
+- 確認状態は `.acsl/rid_confirmed` で管理 (git 管理外)。日付か RID が変われば再確認。
+- 非対話実行 (systemd 自動起動 / CI) では `read` で固まらないよう自動スキップ。
+  一時的に無効化したいときは `DUP_SKIP_RID_CHECK=1 dup ...`。
+- さらに `dup` は、**呼び出し元シェルの `ROS_DOMAIN_ID` と設定ファイルの RID が食い違う**場合に
+  `recho` で警告する (別端末で `setrid` した後、手元シェルが古い RID のまま取り残されている等)。
+  `dup` 自体は常に設定ファイルの値で起動する。手元シェルを合わせるには `source $ACSL_ROS2_DIR/bashrc`。
+
 ## 開発の仕方
 このリポジトリを使ったシステム開発の手順
 **用語**

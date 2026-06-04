@@ -3,6 +3,8 @@
 *project_launch.service
 
 ############ Custom
+# RID 日次確認スタンプ (setrid / dup が生成。ホスト固有なので管理外)
+.acsl/
 *.pyc
 __pycache__
 *.bag
