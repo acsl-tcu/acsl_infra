@@ -193,11 +193,13 @@ RID (`ROS_DOMAIN_ID`) は ROS2 の通信名前空間を分離する ID。**RID �
 setrid 42      # ROS_DOMAIN_ID を 42 に変更 (1-99 の整数)
 ```
 
-- `$ACSL_ROS2_DIR/bashrc` の `export ROS_DOMAIN_ID` を書き換え、以後の `dup` に反映。
-- 現在の対話シェルにも即 `export` され、プロンプト `[PROJECT<RID>]` の表示も更新される。
+- `$ACSL_ROS2_DIR/bashrc` の `export ROS_DOMAIN_ID` を書き換え、以後の `dup` / 新しいシェルに反映。
 - 実行すると「本日分の RID 確認」も同時に済んだ扱いになる。
-- `setrid` は (スクリプトでなく) `completions.sh` で定義されるシェル関数。
-  新しい端末では自動で有効。既存端末では `source ~/.bashrc` するか `dup` 再起動で読み込まれる。
+- `setrid` は `dup` 等と同じく `$ACSL_ROS2_DIR/commands/scripts/setrid` の **PATH 上スクリプト**。
+  ファイルが配置されていればどの端末でもそのまま使え、シェル関数のような再 `source` は不要。
+- ただしスクリプトは子プロセスなので**実行中の対話シェルの `ROS_DOMAIN_ID` は変えられない**
+  (永続化は設定ファイルで完結)。手元シェルとプロンプト `[PROJECT<RID>]` 表示に即反映したい場合は
+  `source $ACSL_ROS2_DIR/bashrc`(`dup` の RID 不一致警告と同じ案内)。`dup` は常に設定ファイルの値で起動する。
 
 > **反映にはコンテナの再生成が必要。** RID はイメージに焼き込まれず `dup` 起動時にコンテナへ
 > 注入される。稼働中コンテナの RID を変えるには `drestart <name>` (= `drm` + `dup`)、
