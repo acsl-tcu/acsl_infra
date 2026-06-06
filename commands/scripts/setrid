@@ -1,0 +1,32 @@
+#! /usr/bin/bash
+# setrid <1-99> : ROS_DOMAIN_ID(RID) を一発で変更するコマンド。
+#   dup / dps 等と同じく $ACSL_ROS2_DIR/commands/scripts 配下の PATH 上スクリプト。
+#   - $ACSL_ROS2_DIR/bashrc の export ROS_DOMAIN_ID 行を書き換え (以後の dup / 新シェルに反映)
+#   - 本日分の RID 確認スタンプ ($ACSL_ROS2_DIR/.acsl/rid_confirmed) も更新
+#     (= setrid 自体が日次確認を兼ねる)
+#
+# 注意: スクリプトは子プロセスのため、実行中の対話シェルの ROS_DOMAIN_ID は変えられない
+#       (export は親シェルに伝播しない)。手元シェルへ即反映したい場合は最後に案内する
+#       source コマンドを実行する。dup は常に設定ファイルの値で起動するため、永続化は
+#       このスクリプトで完結している。
+
+source "$ACSL_ROS2_DIR/docker/common/scripts/super_echo"
+
+id="$1"
+if ! [[ "$id" =~ ^[0-9]+$ ]] || ((id < 1 || id > 99)); then
+  recho "setrid: RID は 1-99 の整数で指定してください (例: setrid 42)"
+  exit 1
+fi
+
+# set_bashrc は CWD の ./bashrc を書き換えるので $ACSL_ROS2_DIR へ移動して実行
+(cd "$ACSL_ROS2_DIR" && set_bashrc "export ROS_DOMAIN_ID" "$id" >/dev/null)
+
+stamp="$ACSL_ROS2_DIR/.acsl/rid_confirmed"
+mkdir -p "$(dirname "$stamp")"
+printf '%s %s\n' "$(date +%F)" "$id" >"$stamp"
+
+gecho "ROS_DOMAIN_ID を ${id} に設定しました (本日分の確認済み)。"
+if [ -n "$ROS_DOMAIN_ID" ] && [ "$ROS_DOMAIN_ID" != "$id" ]; then
+  recho "このシェルは RID=${ROS_DOMAIN_ID} のままです。即反映: source \$ACSL_ROS2_DIR/bashrc"
+fi
+recho "稼働中コンテナへの反映には再生成が必要: drestart <name> もしくは drm <name> && dup <name>"
