@@ -1,0 +1,63 @@
+#!/bin/bash
+# Isaac Sim 6.x (Kit Python 3.12) + ROS2 Jazzy コンテナ起動 (ACSL 共有コマンド)
+# プロジェクトルートは ACSL_WORK_DIR 規約に従う。どのプロジェクトからでも `disaac`。
+#   disaac          : 既定 kit (PhysX)
+#   disaac sdg      : Actor SDG kit
+#   disaac newton   : Newton 物理エンジン kit (Isaac Sim 6.0, experimental)
+# Env: ISAAC_SIM_IMAGE / ISAAC_SIM_LAUNCH で上書き可
+export DISPLAY=:0
+xhost +local: > /dev/null 2>&1
+
+# プロジェクトルートは ACSL 共通規約 ACSL_WORK_DIR を必須化する。
+# (共有コマンドはスクリプト位置が .acsl/ 側でプロジェクトルートと別なので自己導出しない)
+WORK_DIR="${ACSL_WORK_DIR:?ACSL_WORK_DIR 未設定 (bashrc を source して下さい)}"
+IMAGE="${ISAAC_SIM_IMAGE:-kasekiguchi/acsl-common:isaac-sim6-jazzy_x86}"
+
+# Isaac Sim イメージの存在確認 (dimages = docker images -a)。
+# 無ければ setup isaacsim を促して終了 (誤った docker pull 待ちを防ぐ)。
+if ! dimages | awk 'NR>1 {print $1":"$2}' | grep -qx "${IMAGE}"; then
+  echo "Isaac Sim イメージ '${IMAGE}' が見つかりません。" >&2
+  echo "先に 'setup isaacsim' を実行してイメージを構築して下さい" >&2
+  echo "  (NGC login 必須: docker login nvcr.io / user \$oauthtoken / pass NGC API key)。" >&2
+  echo "別イメージを使う場合は ISAAC_SIM_IMAGE で上書きして下さい。" >&2
+  exit 1
+fi
+
+EXTRA_ENABLE="--enable isaacsim.code_editor.jupyter --enable isaacsim.ros2.bridge --enable isaacsim.replicator.agent.core --allow-root"
+DEFAULT_LAUNCH="/isaac-sim/runapp.sh ${EXTRA_ENABLE}"
+SDG_LAUNCH="/isaac-sim/kit/kit /isaac-sim/apps/isaacsim.exp.action_and_event_data_generation.full.kit --merge-config=/isaac-sim/config/open_endpoint.toml ${EXTRA_ENABLE}"
+NEWTON_LAUNCH="/isaac-sim/kit/kit /isaac-sim/apps/isaacsim.exp.full.newton.kit ${EXTRA_ENABLE}"
+
+case "${1:-}" in
+  "")      PRESET_LAUNCH="$DEFAULT_LAUNCH" ;;
+  sdg)     PRESET_LAUNCH="$SDG_LAUNCH" ;;
+  newton)  PRESET_LAUNCH="$NEWTON_LAUNCH" ;;
+  -h|--help)
+    echo "Usage: disaac [sdg|newton]"
+    echo "  (no arg) : default kit (PhysX)"
+    echo "  sdg      : Actor SDG kit"
+    echo "  newton   : Newton 物理エンジン kit (experimental)"
+    exit 0 ;;
+  *) echo "Unknown arg: $1 (supported: sdg, newton)" >&2; exit 1 ;;
+esac
+LAUNCH_CMD="${ISAAC_SIM_LAUNCH:-$PRESET_LAUNCH}"
+
+docker run --name isaac-sim --entrypoint bash -it --ipc=host --gpus all --rm --network=host \
+    -e "ACCEPT_EULA=Y" -e "PRIVACY_CONSENT=Y" -e DISPLAY=$DISPLAY \
+    -e ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-20} \
+    -e RMW_IMPLEMENTATION=rmw_fastrtps_cpp \
+    -e ROS_AUTOMATIC_DISCOVERY_RANGE=SUBNET \
+    -e FASTDDS_BUILTIN_TRANSPORTS=UDPv4 \
+    -e FASTRTPS_DEFAULT_PROFILES_FILE=/workspace/isaac_sim/config/fastdds_udp_no_shm.xml \
+    -v $HOME/ENV:/ENV \
+    -v "${WORK_DIR}":/workspace \
+    -v "${WORK_DIR}/isaac_sim/notebooks":/isaac-sim/exts/isaacsim.code_editor.jupyter/data/notebooks:rw \
+    -v $HOME/.Xauthority:/isaac-sim/.Xauthority \
+    -v ~/docker/isaac-sim/cache/main:/isaac-sim/.cache:rw \
+    -v ~/docker/isaac-sim/cache/computecache:/isaac-sim/.nv/ComputeCache:rw \
+    -v ~/docker/isaac-sim/logs:/isaac-sim/.nvidia-omniverse/logs:rw \
+    -v ~/docker/isaac-sim/config:/isaac-sim/.nvidia-omniverse/config:rw \
+    -v ~/docker/isaac-sim/data:/isaac-sim/.local/share/ov/data:rw \
+    -v ~/docker/isaac-sim/pkg:/isaac-sim/.local/share/ov/pkg:rw \
+    "${IMAGE}" \
+    -c "source /opt/ros/jazzy/setup.bash 2>/dev/null; ${LAUNCH_CMD}"
