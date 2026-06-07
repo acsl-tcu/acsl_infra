@@ -13,9 +13,10 @@ xhost +local: > /dev/null 2>&1
 WORK_DIR="${ACSL_WORK_DIR:?ACSL_WORK_DIR 未設定 (bashrc を source して下さい)}"
 IMAGE="${ISAAC_SIM_IMAGE:-kasekiguchi/acsl-common:isaac-sim6-jazzy_x86}"
 
-# Isaac Sim イメージの存在確認 (dimages = docker images -a)。
+# Isaac Sim イメージの存在確認 (出力フォーマット非依存に docker image inspect で判定。
+# dimages の列レイアウトは環境 (containerd image-store 等) で変わるため parse しない)。
 # 無ければ setup isaacsim を促して終了 (誤った docker pull 待ちを防ぐ)。
-if ! dimages | awk 'NR>1 {print $1":"$2}' | grep -qx "${IMAGE}"; then
+if ! docker image inspect "${IMAGE}" > /dev/null 2>&1; then
   echo "Isaac Sim イメージ '${IMAGE}' が見つかりません。" >&2
   echo "先に 'setup isaacsim' を実行してイメージを構築して下さい" >&2
   echo "  (NGC login 必須: docker login nvcr.io / user \$oauthtoken / pass NGC API key)。" >&2
