@@ -5,7 +5,7 @@
 #   disaac sdg      : Actor SDG kit
 #   disaac newton   : Newton 物理エンジン kit (Isaac Sim 6.0, experimental)
 # Env: ISAAC_SIM_IMAGE / ISAAC_SIM_LAUNCH で上書き可
-export DISPLAY=:0
+#export DISPLAY=:0
 xhost +local: > /dev/null 2>&1
 
 # プロジェクトルートは ACSL 共通規約 ACSL_WORK_DIR を必須化する。
