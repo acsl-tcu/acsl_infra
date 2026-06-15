@@ -26,12 +26,39 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
     echo "Set DUP_NO_AUTOBUILD=1 to disable step 2 (CI / offline use)."
     exit 0
   fi
-  ROS_LAUNCH=$(ls -v $ACSL_WORK_DIR/launcher/ 2>/dev/null | grep launch_$2 | fmt | awk '{print $NF}')
-  if [[ -n "$ROS_LAUNCH" ]]; then
-    $ACSL_WORK_DIR/launcher/$ROS_LAUNCH -h
+  # launcher を解決 (all → project_launch.sh / それ以外 → launch_<name>.sh)。
+  # 旧実装は launcher を -h 付きでホスト実行していたが、launcher に -h case が
+  # 無く *) に落ちてホスト上で ros2 run してしまうため廃止。代わりに
+  # トップレベル case "$1" の pattern (= サブコマンド) を列挙し、本文を cat する。
+  target="$2"
+  if [[ "$target" == "all" ]]; then
+    launcher="$ACSL_WORK_DIR/project_launch.sh"
+  elif [[ -f "$ACSL_WORK_DIR/launcher/launch_${target}.sh" ]]; then
+    launcher="$ACSL_WORK_DIR/launcher/launch_${target}.sh"
   else
-    echo "Launcher not found for '$2'"
+    ROS_LAUNCH=$(ls -v $ACSL_WORK_DIR/launcher/ 2>/dev/null | grep "launch_${target}" | grep '\.sh$' | tail -1)
+    [[ -n "$ROS_LAUNCH" ]] && launcher="$ACSL_WORK_DIR/launcher/$ROS_LAUNCH"
   fi
+  if [[ -z "$launcher" || ! -f "$launcher" ]]; then
+    echo "Launcher not found for '$target'"
+    exit 1
+  fi
+  echo "Launcher: $launcher"
+  echo "Subcommands (case \$1 patterns):"
+  awk '
+    !cap && $0 ~ /(^|[[:space:]])case[[:space:]]+"?\$(\{?1\}?)"?[[:space:]]+in([[:space:]]|$)/ { cap=1; depth=1; next }
+    cap {
+      if ($0 ~ /(^|[[:space:]])case[[:space:]].*[[:space:]]in([[:space:]]|$)/) { depth++; next }
+      if ($0 ~ /(^|[[:space:]])esac([[:space:]]|;|$)/) { depth--; if (depth==0) cap=0; next }
+      if (depth==1 && match($0, /^[[:space:]]*"?[A-Za-z0-9_:=.-]+("?\|"?[A-Za-z0-9_:=.-]+)*"?\)/)) {
+        line=$0; sub(/\).*/,"",line); gsub(/[[:space:]"]/,"",line)
+        n=split(line, a, "|"); for(i=1;i<=n;i++) if(a[i]!="*"&&a[i]!="") print a[i]
+      }
+    }
+  ' "$launcher" | sed 's/^/  /'
+  echo ""
+  echo "----- $(basename "$launcher") -----"
+  cat "$launcher"
   exit 0
 fi
 if [[ "$1" =~ ^--image= ]]; then
