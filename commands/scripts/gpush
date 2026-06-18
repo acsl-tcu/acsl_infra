@@ -27,7 +27,7 @@ sed -i "s|\$ACSL_ROS2_DIR|$ACSL_ROS2_DIR|g" $ACSL_WORK_DIR/project_launch*.sh
 git push
 
 # clone済み環境リポジトリ
-for env_dir in $ACSL_WORK_DIR/isaac_sim/environments/*/; do
+for env_dir in $ACSL_WORK_DIR/environments/*/; do
   if [[ -d "${env_dir}.git" ]]; then
     changes=$(git -C "$env_dir" status --porcelain)
     if [[ -n "$changes" ]]; then
