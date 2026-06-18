@@ -71,12 +71,15 @@ services:
       - ./common:/common # common scripts
       - $ACSL_WORK_DIR/launcher:/common/ros_launcher
       # 建屋 environment を 1 本の親マウントで全コンテナにライブ配送 (複数建屋対応)
+      #   ホスト $ACSL_WORK_DIR/environments/<name> → コンテナ /root/environment/<name>
+      #   environment は backend 非依存の共通資産なのでプロジェクト直下に置く
+      #   (SITL/HITL/実機すべての制御ランタイムが config/occupancy/maps を参照する)。
       #   /root/environment/<name>/{config,occupancy,omni,...}
       # rw: node_capture / save_map / serialize がコンテナから書く
-      - $ACSL_WORK_DIR/isaac_sim/environments:/root/environment
+      - $ACSL_WORK_DIR/environments:/root/environment
       # 占有格子は active 建屋の occupancy を /common/occupancy にも別名 bind
       # (launch_slam_toolbox.sh / launch_nav2.sh を無改修で建屋切替できるよう ENV_BUILDING で切替)
-      - $ACSL_WORK_DIR/isaac_sim/environments/${ENV_BUILDING:-bld10}/occupancy:/common/occupancy
+      - $ACSL_WORK_DIR/environments/${ENV_BUILDING:-bld10}/occupancy:/common/occupancy
       - /dev:/dev # GPIO and USB devices
       - vscode-server:/root/.vscode-server # VScode setting (preserve VScode extension)
       - $ACSL_WORK_DIR/packages:/root/ros2_ws/src/ros_packages

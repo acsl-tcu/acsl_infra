@@ -61,7 +61,7 @@ else
   fi
 
   # clone済み環境リポジトリを更新
-  for env_dir in $ACSL_WORK_DIR/isaac_sim/environments/*/; do
+  for env_dir in $ACSL_WORK_DIR/environments/*/; do
     if [[ -d "${env_dir}.git" ]]; then
       echo "gpull environment: ${env_dir}"
       git -C "$env_dir" pull
