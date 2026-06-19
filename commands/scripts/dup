@@ -66,14 +66,19 @@ if [[ "$1" =~ ^--image= ]]; then
   shift
 fi
 compose=" -f ${ACSL_ROS2_DIR}/docker/docker-compose.yml "
-# project 固有の docker-compose 上書きは必ず $ACSL_WORK_DIR から探す。
-# dup all 経由で project_launch.sh が cd した後でも検出できるように
+# project 固有の docker-compose 上書きを探す。dockerfile.<name> と同様に
+# dockerfiles/ → ルート の順で探索する (ルートは後方互換)。
+# dup all 経由で project_launch.sh が cd した後でも検出できるよう
 # CWD ではなく ACSL_WORK_DIR を使う。
-if [[ -f "${ACSL_WORK_DIR}/docker-compose_${1}.yml" ]]; then
-  compose=${compose}" -f ${ACSL_WORK_DIR}/docker-compose_${1}.yml "
-  echo ":::::::::::::::::::::::::::::"
-  echo ${compose}
-fi
+for ov in "${ACSL_WORK_DIR}/dockerfiles/docker-compose_${1}.yml" \
+          "${ACSL_WORK_DIR}/docker-compose_${1}.yml"; do
+  if [[ -f "$ov" ]]; then
+    compose=${compose}" -f ${ov} "
+    echo ":::::::::::::::::::::::::::::"
+    echo ${compose}
+    break
+  fi
+done
 
 #cd $ACSL_ROS2_DIR/docker
 source $ACSL_ROS2_DIR/docker/common/scripts/super_echo
