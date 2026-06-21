@@ -1,0 +1,15 @@
+# 日付 → テーマ のローテーション (1行1テーマ、上から順)。
+# run_nightly_audit.sh が「年内通算日 % 行数」で当日のテーマを選ぶ。
+# 行を足す/並べ替えるだけで頻度・順序を変えられる。# 始まりと空行は無視。
+#
+# 各行は themes/<name>.md が存在すること (無いテーマを書くと実行時エラー)。
+# 壁打ちでテーマを作ったら、ここに行を足して有効化する。
+
+docs-drift
+ros2-structure
+backend-smoke
+
+# --- 予約 (themes/ を作ったら上に移して有効化) ---
+# config-consistency   rover.yaml 唯一デフォルト源・ハードコード禁止規約の遵守
+# deps-drift           base image / ROS2 distro / Python pin のバージョンずれ
+# improvement          重複/簡素化/効率化の機械的クリーンアップ
