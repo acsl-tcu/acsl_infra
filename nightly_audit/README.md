@@ -13,6 +13,7 @@ acsl エコシステムを **1日1テーマ**で夜間に自動監査し、確�
 | **テーマ** | `themes/<name>.md` | **監査の中身 (観点/指摘条件/修正範囲/検証法)** | **ここを壁打ちで育てる** |
 | ローテ表 | `rotation.txt` | 日付→テーマ (通算日 % 行数) | 自由に増減 |
 | 権限境界 | `audit_settings.json` | allow/deny (deny 最優先のハードガード) | 新コマンド追加時のみ |
+| 監査対象 | `targets.conf` | repo (静的) / deploy (backend-smoke) の一覧・安全モード | 対象増減時 |
 
 **テーマを足す** = `themes/_TEMPLATE.md` をコピーして書き、`rotation.txt` に1行足すだけ。
 ドライバ/ハーネスは触らなくてよい。
@@ -59,9 +60,19 @@ DRY_RUN=1 ./run_nightly_audit.sh docs-drift
    常に最優先)。`NIGHTLY_PERMISSION_MODE` で変更可。`acceptEdits` は git/gh/colcon を
    承認待ちにしてストールするので**使わない**。完全自走の `bypassPermissions` は隔離ホスト
    限定 (安全分類器も無効化されるため非推奨)。
-5. **ホストのスコープ**: その晩監査できるのは**このホストに存在/デプロイ済みの project**。
-   backend-smoke は実際に動かせる project (例 ruth=rf_rover) のみ。複数 project を監査
-   したいなら、それぞれのデプロイ先で cron を登録する (テーマは共有、対象だけホスト依存)。
+5. **監査対象 (この PC で一元管理)**: `targets.conf` に列挙する。複数 PC に撒くのではなく、
+   ソースクローン (`~/GitHub/sb/<repo>`) と稼働 checkout (`~/rover`, `~/drone`) が揃った
+   この 1 台の cron で完結させる。
+   - `repo` 行 = 静的解析・PR をソースクローンで。
+   - `deploy` 行 = backend-smoke を稼働 checkout で実起動検証。
+
+### ⛔ 実機安全 (絶対)
+**この cron は実機に触れない。アクチュエーション (モーター/プロペラ/車輪) を伴う一切をしない。**
+- backend-smoke で動かすのは **SIM / SITL (純ソフトウェア)** のみ。**HITL は受動検証まで**
+  (bringup・トピック確認。arm/takeoff/モーター/cmd 送出は禁止)。
+- **EXP 系 (実機) は回さない**。targets.conf の `modes` に書かない。
+- 三重で守る: ① targets.conf に EXP を載せない ② driver.md の安全則 ③ audit_settings.json で
+  `dup * EXP*` を deny (deny は allow より優先)。
 
 ### 許可リスト (audit_settings.json) の保守
 `dontAsk` では allow に無いコマンドは静かに拒否される = 監査が必要な探索コマンドが

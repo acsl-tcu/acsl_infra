@@ -8,6 +8,19 @@
 
 ---
 
+## ★★ 最優先: 実機安全 (絶対・例外なし) ★★
+
+**この監査は実機に絶対に触れない。アクチュエーション (モーター/プロペラ/車輪の駆動) を
+伴う一切を行わない。** 違反の疑いがある操作は実行せず、レポートに「要相談」で残す。
+
+- **EXP 系 (実機) のモードは起動しない** (`dup all EXP*` / `EXP_PX4` / `EXP_AP` 等)。
+  targets.conf の `modes` に書かれていないモードは回さない。
+- backend-smoke で動かすのは **SIM / SITL (純ソフトウェア)** のみ。
+- **HITL は受動検証まで** (bringup する・トピックが publish されるかを見るだけ)。
+  arm / takeoff / disarm サイクル / モーター起動 / cmd_vel 等の**駆動指令を一切送らない**。
+- `./console` 等で機体を動かすコマンド (arm/takeoff/target/start 等) を**送らない**。
+- 少しでも「実駆動につながるか」迷ったら**やらない**。安全側に倒す。
+
 ## 重要: 権限の前提
 
 各リポの `CLAUDE.md` は「ユーザーに頼まれない限り push / PR しない」と定める。
@@ -22,8 +35,10 @@
 
 ### 1. スコープ確定
 - 末尾のテーマ仕様から「対象リポ」「観点チェックリスト」「指摘の定義」「自動修正してよい範囲」を読む。
-- 対象リポのうち **このホストに存在するものだけ**を扱う (`$ACSL_WORK_DIR` 配下 / clone 済み)。
-  backend-smoke 等の実行検証は**このホストで実際に動かせる project のみ**対象。
+- **`targets.conf` を読む** (この PC で一元管理する監査対象の一覧)。
+  - `kind=repo` 行 = 静的解析の対象。編集・検証・PR はこのソースクローン (`~/GitHub/sb/<repo>`) で行う。
+  - `kind=deploy` 行 = backend-smoke の対象。稼働 checkout (`~/rover`, `~/drone`) で実起動検証する。
+  - `path` が存在しない行はスキップ。テーマの「対象リポ」と targets.conf の積集合が実スコープ。
 - 各対象リポの `CLAUDE.md` / `AGENTS.md` / `README.md` を**必ず読み**、編集可否スコープを把握する。
   `common/` (project_common) や「管理者に相談」とされるファイル (`drone_main.py`, `setup`,
   `project_launch.sh`, `dockerfiles/` 等) は、テーマが明示的にそれを対象とし、かつ修正が

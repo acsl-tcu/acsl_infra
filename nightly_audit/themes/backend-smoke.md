@@ -1,15 +1,22 @@
 # テーマ: backend-smoke (バックエンド1つを現バージョンで実起動検証)
 
-> ★スタブ — 壁打ちで育てる。**このテーマは実機 cron 限定** (Docker/GPU/ROS2 が要る)。
+> ★スタブ — 壁打ちで育てる。Docker/GPU/ROS2 が要るので稼働 checkout がある環境限定。
 
-## 対象リポ
-- このホストにデプロイされている project (例: ruth = project_rf_rover)。
-  + 共有基盤 acsl_infra のコマンド/イメージ。
+## ★ 安全境界 (driver.md の実機安全則を厳守)
+**実機に触れない。アクチュエーションを伴う一切をしない。**
+- 動かすのは targets.conf の `modes` にある **SIM / SITL のみ**。EXP 系は回さない。
+- HITL は受動検証 (bringup・トピック publish 確認) まで。arm/takeoff/モーター/cmd 送出は禁止。
+- 検証は「立ち上がるか」「トピックが出るか」まで。**機体を動かすコンソール操作はしない**。
+
+## 対象 (targets.conf の deploy 行)
+- `~/rover` (project rf_rover) / `~/drone` (project drone2)。実起動・修正・PR はこの稼働
+  checkout で行う (実際に再現できる場所で直す)。+ 共有基盤 acsl_infra のコマンド/イメージ。
 
 ## 1晩で1バックエンド (ローテーション内ローテーション)
-複数 backend を一度に回すと重い & 切り分け困難。**その晩は1 backend だけ**動かす。
-- rf_rover: `EXP` / `SIM` / `isaacsim`
-- drone2: `SIM` / `SITL_PX4` / `SITL_GZ_PX4` / `SITL_AP` / `SITL_OMNI` / `EXP_*`
+複数 backend を一度に回すと重い & 切り分け困難。**その晩は1 deploy×1 mode だけ**動かす。
+対象モードは targets.conf の `modes` から取る (安全なものだけが書かれている):
+- rover: `SIM` / `isaacsim`
+- drone: `SIM` / `SITL_PX4` / `SITL_GZ_PX4` / `SITL_AP` / `SITL_OMNI`
   (どれを順に回すかは rotation 側 or このファイルのサブローテ表で管理 — 要・壁打ち)
 
 ## 観点 (チェックリスト / 叩き台)
@@ -25,8 +32,8 @@
 
 ## 自動修正してよい範囲 (要・壁打ち)
 - <TODO: バージョン pin の追従・明白な設定漏れまで。設計に踏み込む修正は要相談>
-- 無人実行の安全性: 実機アクチュエータを動かす MODE (EXP 系で実機が繋がっている等) は
-  **起動検証の範囲を限定** (arm しない等)。要・壁打ちで安全境界を明文化。
+- 安全境界は上の「★ 安全境界」が絶対則。EXP 系は対象外、HITL は受動検証のみ。
+  実駆動につながる検証・修正は行わず、必要ならレポートに「要相談」で残す。
 
 ## 検証方法
 - 失敗 → 修正 → **同じ `dup` シーケンスで 2 回**通ることを確認してから draft PR。
