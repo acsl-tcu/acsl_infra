@@ -12,6 +12,7 @@ acsl エコシステムを **1日1テーマ**で夜間に自動監査し、確�
 | ドライバ | `driver.md` | 監査の手順・安全則 (find→検証→draft PR) | 滅多に触らない |
 | **テーマ** | `themes/<name>.md` | **監査の中身 (観点/指摘条件/修正範囲/検証法)** | **ここを壁打ちで育てる** |
 | ローテ表 | `rotation.txt` | 日付→テーマ (通算日 % 行数) | 自由に増減 |
+| 権限境界 | `audit_settings.json` | allow/deny (deny 最優先のハードガード) | 新コマンド追加時のみ |
 
 **テーマを足す** = `themes/_TEMPLATE.md` をコピーして書き、`rotation.txt` に1行足すだけ。
 ドライバ/ハーネスは触らなくてよい。
@@ -41,18 +42,32 @@ DRY_RUN=1 ./run_nightly_audit.sh docs-drift
 
 ## ⚠️ 無人運用の前提 (cron 登録前に要整備)
 
-無人 cron では対話できないため、以下が**事前に**整っている必要がある:
+無人 cron では対話できない。**cron はキーチェーン/`~/.claude/.credentials.json` の対話ログイン
+資格を TTY 無しで使えない**ので、認証は必ず env で渡す。`install_cron.sh` が
+`~/.config/acsl-nightly-audit.env` の雛形を作るので、そこに記入する。
 
-1. **claude の非対話認証**: cron はサブスクの対話ログインを引き継げない。
-   `ANTHROPIC_API_KEY` を cron 環境に渡すか、ホストで事前ログイン済みの資格情報を使う。
-   → どちらにするか要決定 (`run_nightly_audit.sh` は `CLAUDE_BIN` で実体を差し替え可)。
-2. **gh の認証**: PR 作成のため cron 実行ユーザーで `gh auth status` が通ること。
-3. **パーミッションモード**: 無人なので prompt 不可。既定 `acceptEdits`
-   (`NIGHTLY_PERMISSION_MODE` で変更可)。完全自走には bypass 相当が要るが、
-   **セキュリティ上の判断が要る**ので運用方針として明示決定する (要・相談)。
-4. **ホストのスコープ**: その晩監査できるのは**このホストに存在/デプロイ済みの project**。
+1. **claude の非対話認証** (どちらか一方):
+   - `CLAUDE_CODE_OAUTH_TOKEN` — 対話マシンで一度 `claude setup-token` を実行して 1 年有効
+     トークンを発行 (Pro/Max サブスク)。**サブスク勢の推奨**。
+   - `ANTHROPIC_API_KEY` — Claude Console の API キー (API 課金, CI 向き)。
+   - 起動は `--bare` (OAuth refresh/keyring/plugin ロードをスキップ。無いとハングしうる)。
+     `run_nightly_audit.sh` が付与済み。
+2. **gh の認証**: `gh auth status` が通るか、`GH_TOKEN` を env に設定 (PR 作成のため)。
+3. **git identity**: `git config --global user.name/user.email` がホストで設定済みであること。
+4. **パーミッション**: 無人なので prompt 不可。既定 **`dontAsk`** = 許可リスト外は静かに拒否
+   (ハングしない)。許可/拒否は `audit_settings.json` で管理 (**deny > ask > allow**、deny が
+   常に最優先)。`NIGHTLY_PERMISSION_MODE` で変更可。`acceptEdits` は git/gh/colcon を
+   承認待ちにしてストールするので**使わない**。完全自走の `bypassPermissions` は隔離ホスト
+   限定 (安全分類器も無効化されるため非推奨)。
+5. **ホストのスコープ**: その晩監査できるのは**このホストに存在/デプロイ済みの project**。
    backend-smoke は実際に動かせる project (例 ruth=rf_rover) のみ。複数 project を監査
    したいなら、それぞれのデプロイ先で cron を登録する (テーマは共有、対象だけホスト依存)。
+
+### 許可リスト (audit_settings.json) の保守
+`dontAsk` では allow に無いコマンドは静かに拒否される = 監査が必要な探索コマンドが
+列挙漏れだと**黙って実行されず取りこぼす**。新しいコマンドを使い始めたら allow に足す。
+逆に破壊系 (force-push, main への push, `rm -rf`, `reset --hard`, `gh pr merge`, `common/`
+編集, `~/ENV`/`.env` 読取) は deny で固定。deny は allow より優先なので安全側に倒れる。
 
 ## テーマ一覧 (現状)
 - `docs-drift` — ドキュメント/コメントと実装の乖離 (★お手本・実績あり)

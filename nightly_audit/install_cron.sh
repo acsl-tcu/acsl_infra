@@ -11,6 +11,7 @@ chmod +x "$RUNNER" "$HERE"/*.sh 2>/dev/null || true
 
 MARK="# acsl-nightly-audit"           # 識別タグ (冪等更新/削除に使う)
 AT="${AT:-30 2 * * *}"                # 既定 02:30 毎日 (ホスト localtime)
+ENV_FILE="${NIGHTLY_ENV_FILE:-$HOME/.config/acsl-nightly-audit.env}"
 
 current="$(crontab -l 2>/dev/null || true)"
 cleaned="$(printf '%s\n' "$current" | grep -vF "$MARK" || true)"
@@ -21,6 +22,27 @@ if [[ "${1:-}" == "--remove" ]]; then
   exit 0
 fi
 
-line="$AT cd $HERE && ./run_nightly_audit.sh >> $HERE/logs/cron.log 2>&1 $MARK"
+# cron は env が最小。トークン等はこの env ファイルから読む (無ければ雛形を作る)。
+if [[ ! -f "$ENV_FILE" ]]; then
+  mkdir -p "$(dirname "$ENV_FILE")"
+  cat > "$ENV_FILE" <<EOF
+# acsl 夜間監査の無人実行 env。cron がこれを source する。chmod 600 推奨。
+# どちらか一方の認証トークンを設定 (対話ログイン資格は cron では使えない):
+#   CLAUDE_CODE_OAUTH_TOKEN=...   # 対話マシンで \`claude setup-token\` 発行 (サブスク, 1年)
+#   ANTHROPIC_API_KEY=sk-ant-...  # Claude Console の API キー
+# PR 作成用 (gh が未認証なら):
+#   GH_TOKEN=ghp_...
+export HOME="$HOME"
+export ACSL_WORK_DIR="${ACSL_WORK_DIR:-$HOME}"
+# export CLAUDE_CODE_OAUTH_TOKEN=
+# export GH_TOKEN=
+EOF
+  chmod 600 "$ENV_FILE"
+  echo "env 雛形を作成: $ENV_FILE (トークンを記入してから cron が機能します)"
+fi
+
+# cron 行: env を source → ディレクトリ移動 → 実行。/bin/sh でも動くよう '. file' を使う。
+line="$AT . $ENV_FILE; cd $HERE && ./run_nightly_audit.sh >> $HERE/logs/cron.log 2>&1 $MARK"
 { printf '%s\n' "$cleaned"; printf '%s\n' "$line"; } | grep -vE '^\s*$' | crontab -
 echo "installed:"; crontab -l | grep -F "$MARK"
+echo "→ 次に $ENV_FILE にトークンを記入してください。"

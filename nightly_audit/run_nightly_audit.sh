@@ -56,17 +56,34 @@ if [[ "${DRY_RUN:-0}" == "1" ]]; then
   echo "----- DRY_RUN: prompt -----"; echo "$PROMPT"; exit 0
 fi
 
+# --- 無人実行の前提チェック (README「無人運用の前提」参照) -------------------
+# cron は対話ログインの資格 (keyring / ~/.claude/.credentials.json) を TTY 無しで
+# 使えない。必ず env でトークンを渡す。どちらか一方が要る:
+#   CLAUDE_CODE_OAUTH_TOKEN  … 対話マシンで `claude setup-token` 発行 (サブスク, 1年)
+#   ANTHROPIC_API_KEY        … Claude Console の API キー
+if [[ -z "${CLAUDE_CODE_OAUTH_TOKEN:-}" && -z "${ANTHROPIC_API_KEY:-}" ]]; then
+  echo "[nightly-audit] FATAL: CLAUDE_CODE_OAUTH_TOKEN も ANTHROPIC_API_KEY も未設定。" \
+       "cron 環境では対話ログイン資格は使えない。README 参照。" | tee -a "$LOG"
+  exit 2
+fi
+# gh (PR 作成) も無人で通る必要がある。
+if ! gh auth status >/dev/null 2>&1 && [[ -z "${GH_TOKEN:-}" ]]; then
+  echo "[nightly-audit] WARN: gh 未認証 & GH_TOKEN 未設定。PR 作成に失敗しうる。" | tee -a "$LOG"
+fi
+
 # --- claude 無人起動 --------------------------------------------------------
-# 無人実行の要件 (README 参照):
-#   - 非対話の認証 (ANTHROPIC_API_KEY もしくは事前ログイン済みの資格情報)
-#   - gh が cron ユーザーで認証済み (PR 作成のため)
-#   - パーミッション: 無人なので prompt できない。許可モードは運用方針で決める。
+# --bare       : OAuth refresh / keyring / plugin ロードをスキップ (無人必須)
+# dontAsk      : 許可リスト外は静かに拒否 = ハングしない。deny>ask>allow で deny 最優先。
+# --settings   : audit_settings.json (allow=監査が使うコマンド, deny=破壊系ハードガード)
 CLAUDE_BIN="${CLAUDE_BIN:-claude}"
-PERMISSION_MODE="${NIGHTLY_PERMISSION_MODE:-acceptEdits}"
+PERMISSION_MODE="${NIGHTLY_PERMISSION_MODE:-dontAsk}"
+SETTINGS="$HERE/audit_settings.json"
 
 cd "${ACSL_WORK_DIR:-$HOME}"
 set +e
-"$CLAUDE_BIN" -p "$PROMPT" --permission-mode "$PERMISSION_MODE" >>"$LOG" 2>&1
+"$CLAUDE_BIN" --bare -p "$PROMPT" \
+  --permission-mode "$PERMISSION_MODE" \
+  --settings "$SETTINGS" >>"$LOG" 2>&1
 rc=$?
 set -e
 echo "[nightly-audit] done rc=$rc" | tee -a "$LOG"
