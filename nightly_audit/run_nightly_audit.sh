@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Nightly Auditor エントリポイント (cron が呼ぶ)。
 #   1. その日のテーマを rotation.txt から決める
-#   2. driver.md + themes/<theme>.md を結合してプロンプトを作る
-#   3. claude を無人 (headless) 起動して監査させる
-#   4. ログを残す。多重起動はロックで防ぐ。
+#   2. targets.conf の全リポ (デプロイ先含む) の main を最新化する
+#   3. driver.md + themes/<theme>.md を結合してプロンプトを作る
+#   4. claude を無人 (headless) 起動して監査させる
+#   5. ログを残す。多重起動はロックで防ぐ。
 #
 # 使い方:
 #   run_nightly_audit.sh                # 当日のテーマを自動選択して実行
@@ -15,7 +16,36 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 THEMES_DIR="$HERE/themes"
 LOG_DIR="$HERE/logs"
 ROTATION="$HERE/rotation.txt"
+TARGETS="$HERE/targets.conf"
 mkdir -p "$LOG_DIR"
+
+# 監査前に targets.conf の全リポ (デプロイ先含む) の main を最新化する。
+# 安全策: main 上でクリーンなら ff pull、そうでなければ checkout せず local main ref
+# だけを ff 更新、それも無理ならスキップしてログ (実機/作業中の checkout を壊さない)。
+# 監査ブランチは driver が origin/main から切るので、fetch 済みであることが要点。
+# NIGHTLY_NO_SYNC=1 で無効化 (テスト用)。
+sync_targets() {
+  local logf="$1"
+  [[ "${NIGHTLY_NO_SYNC:-0}" == "1" ]] && { echo "[sync] skip (NIGHTLY_NO_SYNC=1)" | tee -a "$logf"; return 0; }
+  [[ -f "$TARGETS" ]] || { echo "[sync] targets.conf 無し。skip" | tee -a "$logf"; return 0; }
+  grep -vE '^[[:space:]]*(#|$)' "$TARGETS" | while IFS='|' read -r kind name path project modes; do
+    path="$(echo "$path" | xargs)"; path="${path/#\~/$HOME}"
+    [[ -d "$path/.git" ]] || { echo "[sync] $path: .git 無し skip" | tee -a "$logf"; continue; }
+    git -C "$path" fetch origin --quiet 2>>"$logf" || { echo "[sync] $path: fetch 失敗" | tee -a "$logf"; continue; }
+    local cur dirty
+    cur="$(git -C "$path" symbolic-ref --short HEAD 2>/dev/null || echo DETACHED)"
+    dirty="$(git -C "$path" status --porcelain)"
+    if [[ "$cur" == "main" && -z "$dirty" ]]; then
+      git -C "$path" pull --ff-only origin main --quiet 2>>"$logf" \
+        && echo "[sync] $path: main を ff pull" | tee -a "$logf" \
+        || echo "[sync] $path: ff pull 不可 (要手動)" | tee -a "$logf"
+    elif git -C "$path" fetch origin main:main --quiet 2>>"$logf"; then
+      echo "[sync] $path: local main を ff 更新 (作業ブランチ=$cur は不変)" | tee -a "$logf"
+    else
+      echo "[sync] $path: main 更新スキップ (branch=$cur, dirty=$([[ -n $dirty ]] && echo yes || echo no))。origin/main は fetch 済" | tee -a "$logf"
+    fi
+  done
+}
 
 # --- テーマ選択 -------------------------------------------------------------
 if [[ -n "${1:-}" ]]; then
@@ -70,6 +100,10 @@ fi
 if ! gh auth status >/dev/null 2>&1 && [[ -z "${GH_TOKEN:-}" ]]; then
   echo "[nightly-audit] WARN: gh 未認証 & GH_TOKEN 未設定。PR 作成に失敗しうる。" | tee -a "$LOG"
 fi
+
+# --- 全リポの main を最新化 (必ず監査の前に) --------------------------------
+echo "[nightly-audit] sync targets to latest main ..." | tee -a "$LOG"
+sync_targets "$LOG" || true   # sync の不調で監査全体を止めない (origin/main は fetch 済)
 
 # --- claude 無人起動 --------------------------------------------------------
 # --bare       : OAuth refresh / keyring / plugin ロードをスキップ (無人必須)
