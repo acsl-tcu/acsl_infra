@@ -48,15 +48,45 @@ sync_targets() {
 }
 
 # --- テーマ選択 -------------------------------------------------------------
+mapfile -t THEMES < <(grep -vE '^\s*(#|$)' "$ROTATION")
+[[ ${#THEMES[@]} -gt 0 ]] || { echo "rotation.txt が空"; exit 1; }
+DOY=$(date +%j); DOY=$((10#$DOY))            # 年内通算日 (先頭0を10進化)
 if [[ -n "${1:-}" ]]; then
   THEME="$1"
 else
-  mapfile -t THEMES < <(grep -vE '^\s*(#|$)' "$ROTATION")
-  [[ ${#THEMES[@]} -gt 0 ]] || { echo "rotation.txt が空"; exit 1; }
-  DOY=$(date +%j); DOY=$((10#$DOY))          # 年内通算日 (先頭0を10進化)
   THEME="${THEMES[$(( DOY % ${#THEMES[@]} ))]}"
 fi
-THEME_FILE="$THEMES_DIR/${THEME}.md"
+
+# backend-smoke-<deploy>-<mode> は共有テーマ themes/backend-smoke.md を使う。
+# ★ 1 backend = 1晩。 drone と rover が両方 isaacsim を持てば、それぞれ別の晩 (計2晩)。
+#   サブローテはしない — rotation.txt が (deploy×mode) を1行ずつ列挙して頻度を決める。
+#   例: backend-smoke-drone-SIM / backend-smoke-rover-isaacsim
+# deploy 名にハイフンは無い前提で、先頭の "<deploy>-" を剥がした残りを mode とする
+# (mode は SITL_GZ_PX4 のように "_" を含むが "-" は含まない)。
+SMOKE_DEPLOY=""; SMOKE_MODE=""; SMOKE_PATH=""
+if [[ "$THEME" == backend-smoke-*-* ]]; then
+  rest="${THEME#backend-smoke-}"            # <deploy>-<mode>
+  SMOKE_DEPLOY="${rest%%-*}"                # 先頭セグメント = deploy
+  SMOKE_MODE="${rest#*-}"                   # 残り = mode (内部の "_" は保持)
+  THEME_FILE="$THEMES_DIR/backend-smoke.md"
+  # targets.conf の deploy 行 (kind|name|path|project|modes) から path と許可 modes を取る
+  while IFS='|' read -r kind name path project modes; do
+    [[ "$(echo "$kind" | xargs)" == "deploy" ]] || continue
+    [[ "$(echo "$name" | xargs)" == "$SMOKE_DEPLOY" ]] || continue
+    SMOKE_PATH="$(echo "$path" | xargs)"; SMOKE_PATH="${SMOKE_PATH/#\~/$HOME}"
+    SMOKE_MODES_CSV="$(echo "$modes" | xargs)"
+    break
+  done < <(grep -vE '^[[:space:]]*(#|$)' "$TARGETS")
+  [[ -n "$SMOKE_PATH" ]] || { echo "backend-smoke: deploy '$SMOKE_DEPLOY' が targets.conf に無い"; exit 1; }
+  # ★安全: mode が targets.conf の許可リストに無ければ実行しない (EXP 混入を弾く)
+  IFS=',' read -ra MODES <<< "$(echo "${SMOKE_MODES_CSV:-}" | tr -d ' ')"
+  ok=0; for m in "${MODES[@]}"; do [[ "$m" == "$SMOKE_MODE" ]] && ok=1; done
+  [[ "$ok" == 1 ]] || { echo "backend-smoke: mode '$SMOKE_MODE' は $SMOKE_DEPLOY の許可 modes ($SMOKE_MODES_CSV) に無い。安全のため中止。"; exit 1; }
+elif [[ "$THEME" == backend-smoke-* ]]; then
+  echo "backend-smoke は 'backend-smoke-<deploy>-<mode>' 形式で指定する (例: backend-smoke-drone-SIM)。1 backend=1晩。"; exit 1
+else
+  THEME_FILE="$THEMES_DIR/${THEME}.md"
+fi
 [[ -f "$THEME_FILE" ]] || { echo "テーマ仕様が無い: $THEME_FILE"; exit 1; }
 
 DATE="$(date +%Y-%m-%d)"
@@ -73,9 +103,20 @@ echo "[nightly-audit] $DATE theme=$THEME host=$(hostname)" | tee -a "$LOG"
 PROMPT="$(cat "$HERE/driver.md")
 
 ============================================================
-今日のテーマ仕様 (themes/${THEME}.md):
+今日のテーマ仕様 (themes/$(basename "$THEME_FILE")):
 ============================================================
 $(cat "$THEME_FILE")
+$(if [[ -n "$SMOKE_DEPLOY" ]]; then cat <<SMOKE
+
+============================================================
+今夜の backend-smoke 対象 (★この1 backend だけ・1晩1 backend):
+  deploy = ${SMOKE_DEPLOY}   (稼働 checkout: ${SMOKE_PATH})
+  mode   = ${SMOKE_MODE}
+他の backend/mode は今夜は回さない。上記 deploy×mode 1つだけを稼働 checkout で起動検証する。
+安全則: SIM/SITL のみ・HITL は受動 (bringup/topic 確認まで)・EXP 禁止・実駆動指令を送らない。
+============================================================
+SMOKE
+fi)
 
 ============================================================
 実行日: ${DATE} / ホスト: $(hostname)

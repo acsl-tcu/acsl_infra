@@ -3,11 +3,23 @@
 # 行を足す/並べ替えるだけで頻度・順序を変えられる。# 始まりと空行は無視。
 #
 # 各行は themes/<name>.md が存在すること (無いテーマを書くと実行時エラー)。
+# 例外: backend-smoke-<deploy>-<mode> は共有 themes/backend-smoke.md を使う (harness が特別扱い)。
 # 壁打ちでテーマを作ったら、ここに行を足して有効化する。
 
 docs-drift
 ros2-structure
-backend-smoke
+
+# backend-smoke は ★1 backend = 1晩★。テーマ名に deploy と mode を含める
+# (backend-smoke-<deploy>-<mode>)。共有仕様は themes/backend-smoke.md。harness が
+# targets.conf の許可 modes と照合し、許可外 (EXP 等) は実行前に弾く。
+# drone も rover も自分の backend の数だけ晩を使う (両方 isaacsim を持てば各1晩=計2晩)。
+backend-smoke-drone-SIM
+backend-smoke-drone-SITL_PX4
+backend-smoke-drone-SITL_GZ_PX4
+backend-smoke-drone-SITL_AP
+backend-smoke-drone-SITL_OMNI
+backend-smoke-rover-SIM
+backend-smoke-rover-isaacsim
 
 # --- 予約 (themes/ を作ったら上に移して有効化) ---
 # config-consistency   rover.yaml 唯一デフォルト源・ハードコード禁止規約の遵守
