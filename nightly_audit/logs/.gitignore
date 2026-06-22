@@ -1,0 +1,4 @@
+# 実行ログ・cron ログ・ロックは管理外。監査レポート (<date>-<theme>.md) は手動で残す想定。
+*.run.log
+cron.log
+.lock
