@@ -1,0 +1,42 @@
+{
+  "_comment": "夜間監査の権限境界。deny > ask > allow で deny が常に最優先 (モード問わずハードガード)。run_nightly_audit.sh が --settings で読む。allow は dontAsk モードで監査が必要とするコマンド群。",
+  "permissions": {
+    "allow": [
+      "Read",
+      "Edit",
+      "Write",
+      "Bash(ls *)", "Bash(cat *)", "Bash(grep *)", "Bash(rg *)", "Bash(find *)",
+      "Bash(sed *)", "Bash(head *)", "Bash(tail *)", "Bash(wc *)", "Bash(diff *)",
+      "Bash(git status*)", "Bash(git log*)", "Bash(git diff*)", "Bash(git show*)",
+      "Bash(git fetch*)", "Bash(git branch*)", "Bash(git checkout *)", "Bash(git switch *)",
+      "Bash(git add *)", "Bash(git commit *)", "Bash(git push -u origin *)",
+      "Bash(git push origin *)", "Bash(git restore *)", "Bash(git stash*)",
+      "Bash(gh pr create *)", "Bash(gh pr view *)", "Bash(gh pr list*)", "Bash(gh api *)",
+      "Bash(colcon *)", "Bash(python -m py_compile *)", "Bash(python3 -m py_compile *)",
+      "Bash(bash -n *)", "Bash(dup *)", "Bash(dps*)", "Bash(dlogs *)", "Bash(din *)",
+      "Bash(build_project*)", "Bash(drm *)", "Bash(acsl *)",
+      "Bash(docker ps*)", "Bash(docker logs *)", "Bash(docker rm *)"
+    ],
+    "deny": [
+      "Bash(dup * EXP*)",
+      "Bash(dup all EXP*)",
+      "Bash(git push * main*)",
+      "Bash(git push origin main*)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git reset --hard*)",
+      "Bash(git clean *)",
+      "Bash(git rebase*)",
+      "Bash(git branch -D*)",
+      "Bash(gh pr merge*)",
+      "Bash(rm -rf *)",
+      "Bash(sudo *)",
+      "Edit(**/common/**)",
+      "Write(**/common/**)",
+      "Edit(**/.git/**)",
+      "Read(**/.env)",
+      "Read(~/ENV/**)",
+      "Read(/ENV/**)"
+    ]
+  }
+}
