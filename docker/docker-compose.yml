@@ -48,6 +48,9 @@ services:
       - TAG=${TAG:-image_${PROJECT}}
       - HOST_USER=$LOGNAME # deprecate 
       - ROS_DOMAIN_ID=${ROS_DOMAIN_ID} # set project unique id
+      # FastDDS Discovery Server (ユニキャスト discovery)。既定は空 = 従来どおりマルチキャスト discovery
+      - ROS_DISCOVERY_SERVER=${ROS_DISCOVERY_SERVER:-}
+      - ROS_SUPER_CLIENT=${ROS_SUPER_CLIENT:-}
       - USER=$USER
       - ACSL_ROS2_DIR=$ACSL_ROS2_DIR
       - ACSL_WORK_DIR=$ACSL_WORK_DIR
