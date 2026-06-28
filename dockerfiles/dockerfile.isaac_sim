@@ -23,7 +23,7 @@
 # ベース OS: nvcr.io/nvidia/isaac-sim:6.0.0-dev2 は Ubuntu 24.04 (noble) 確認済み。
 #   → apt の jazzy(Python 3.12) がそのまま引け、Kit(3.12) と ABI 一致する。
 
-ARG ISAAC_IMAGE=nvcr.io/nvidia/isaac-sim:6.0.0-dev3
+ARG ISAAC_IMAGE=nvcr.io/nvidia/isaac-sim:6.0.1
 FROM ${ISAAC_IMAGE}
 
 ENV DEBIAN_FRONTEND=noninteractive
