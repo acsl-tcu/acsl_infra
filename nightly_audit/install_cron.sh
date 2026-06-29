@@ -32,10 +32,15 @@ if [[ ! -f "$ENV_FILE" ]]; then
 #   ANTHROPIC_API_KEY=sk-ant-...  # Claude Console の API キー
 # PR 作成用 (gh が未認証なら):
 #   GH_TOKEN=ghp_...
+# Slack 通知 (任意。設定すると完了後に要約を指定チャンネルへ投稿。未設定なら無効):
+#   NIGHTLY_SLACK_WEBHOOK=https://hooks.slack.com/services/XXX/YYY/ZZZ  # Incoming Webhook URL
+#   NIGHTLY_SLACK_NOTIFY=always   # always(既定) | on-change (PR/要相談/異常時のみ)
 export HOME="$HOME"
 export ACSL_WORK_DIR="${ACSL_WORK_DIR:-$HOME}"
 # export CLAUDE_CODE_OAUTH_TOKEN=
 # export GH_TOKEN=
+# export NIGHTLY_SLACK_WEBHOOK=
+# export NIGHTLY_SLACK_NOTIFY=always
 EOF
   chmod 600 "$ENV_FILE"
   echo "env 雛形を作成: $ENV_FILE (トークンを記入してから cron が機能します)"

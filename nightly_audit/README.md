@@ -8,7 +8,7 @@ acsl エコシステムを **1日1テーマ**で夜間に自動監査し、確�
 | 層 | 実体 | 役割 | 触る頻度 |
 |----|------|------|----------|
 | スケジューラ | `install_cron.sh` が登録する cron | 夜間に1回 `run_nightly_audit.sh` を起動 | ほぼ不変 |
-| ハーネス | `run_nightly_audit.sh` | 当日テーマ選択 → プロンプト構築 → claude 無人起動 → ログ | ほぼ不変 |
+| ハーネス | `run_nightly_audit.sh` | 当日テーマ選択 → **全リポ main 最新化** → プロンプト構築 → claude 無人起動 → ログ | ほぼ不変 |
 | ドライバ | `driver.md` | 監査の手順・安全則 (find→検証→draft PR) | 滅多に触らない |
 | **テーマ** | `themes/<name>.md` | **監査の中身 (観点/指摘条件/修正範囲/検証法)** | **ここを壁打ちで育てる** |
 | ローテ表 | `rotation.txt` | 日付→テーマ (通算日 % 行数) | 自由に増減 |
@@ -66,6 +66,18 @@ DRY_RUN=1 ./run_nightly_audit.sh docs-drift
    - `repo` 行 = 静的解析・PR をソースクローンで。
    - `deploy` 行 = backend-smoke を稼働 checkout で実起動検証。
 
+### 🔔 Slack 通知 (任意)
+md レポートはプル型で気づけないので、完了後にハーネスが要約を Slack へ push できる。
+1. Slack で **Incoming Webhook** を作り、投稿先チャンネルを選んで Webhook URL を得る
+   (Slack App → Incoming Webhooks → Add New Webhook to Workspace)。
+2. env ファイル (`~/.config/acsl-nightly-audit.env`) に設定:
+   - `export NIGHTLY_SLACK_WEBHOOK=https://hooks.slack.com/services/...`
+   - `export NIGHTLY_SLACK_NOTIFY=always`  (既定。`on-change` にすると PR/「要相談」/異常終了の時だけ投稿)
+3. 投稿内容: `theme / host / rc / 開いた PR の URL / レポート本文 (3500字で truncate)`。
+   未設定なら skip (通知無しで通常動作)。投稿は**ハーネスが行い**、claude には webhook を渡さない。
+- bot token + `chat.postMessage` で動的にチャンネルを選ぶ方式も可能だが、固定チャンネルなら
+  webhook が最小構成。`run_nightly_audit.sh` の `notify_slack()` を差し替えれば対応できる。
+
 ### ⛔ 実機安全 (絶対)
 **この cron は実機に触れない。アクチュエーション (モーター/プロペラ/車輪) を伴う一切をしない。**
 - backend-smoke で動かすのは **SIM / SITL (純ソフトウェア)** のみ。**HITL は受動検証まで**
@@ -83,5 +95,6 @@ DRY_RUN=1 ./run_nightly_audit.sh docs-drift
 ## テーマ一覧 (現状)
 - `docs-drift` — ドキュメント/コメントと実装の乖離 (★お手本・実績あり)
 - `ros2-structure` — ROS2/パイプライン構造の健全性 (☆スタブ)
+- `branch-cleanup` — main 以外に置き去りの checkout を整理 (クリーン&マージ済みなら main へ復帰+済みブランチ削除、それ以外は「要相談」で注意)
 - `backend-smoke` — backend 1つを現バージョンで実起動検証 (☆スタブ・実機限定)
 - `config-consistency` / `deps-drift` / `improvement` — 未作成 (rotation には予約、要・壁打ち)

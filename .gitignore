@@ -11,6 +11,8 @@ __pycache__
 *.bag.active
 *.csv
 *.json
+# 夜間監査の権限境界は必須の追跡対象 (*.json の例外)。harness が --settings で読む。
+!nightly_audit/audit_settings.json
 *.jsonarch
 *.mat
 *.pkl
