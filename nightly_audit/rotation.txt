@@ -8,6 +8,7 @@
 
 docs-drift
 ros2-structure
+branch-cleanup
 
 # backend-smoke は ★1 backend = 1晩★。テーマ名に deploy と mode を含める
 # (backend-smoke-<deploy>-<mode>)。共有仕様は themes/backend-smoke.md。harness が
