@@ -162,4 +162,54 @@ set +e
 rc=$?
 set -e
 echo "[nightly-audit] done rc=$rc" | tee -a "$LOG"
+
+# --- Slack 通知 (任意) ------------------------------------------------------
+# 無人運用では logs/<date>-<theme>.md を誰も見に行かない。完了後に Slack へ要約を push する。
+# 秘匿値は env (cron が source する ~/.config/acsl-nightly-audit.env) で渡す。未設定なら skip。
+#   NIGHTLY_SLACK_WEBHOOK … Slack Incoming Webhook URL (作成時に決めた1チャンネルへ固定投稿)
+#   NIGHTLY_SLACK_NOTIFY  … always(既定) | on-change (PR か「要相談」がある or rc!=0 の時だけ投稿)
+# 投稿はハーネスが行う (claude には webhook を渡さない/投稿させない)。
+notify_slack() {
+  set +e
+  local webhook="${NIGHTLY_SLACK_WEBHOOK:-}"
+  if [[ -z "$webhook" ]]; then
+    echo "[slack] NIGHTLY_SLACK_WEBHOOK 未設定。skip" | tee -a "$LOG"; return 0
+  fi
+  local report="$LOG_DIR/${DATE}-${THEME}.md"
+  local host; host="$(hostname)"
+  local prs="" body="" has_signal=0
+  if [[ -f "$report" ]]; then
+    body="$(cat "$report")"
+    prs="$(grep -oE 'https://github\.com/[^ )]+/pull/[0-9]+' "$report" 2>/dev/null | sort -u)"
+    [[ -n "$prs" ]] && has_signal=1
+    grep -qiE '要相談|要注意|warn' "$report" 2>/dev/null && has_signal=1
+  fi
+  [[ "$rc" != "0" ]] && has_signal=1
+  if [[ "${NIGHTLY_SLACK_NOTIFY:-always}" == "on-change" && "$has_signal" == "0" ]]; then
+    echo "[slack] on-change: 信号なし (PR/要相談/異常終了なし) → 投稿せず" | tee -a "$LOG"; return 0
+  fi
+  local status; if [[ "$rc" == "0" ]]; then status="✅"; else status="⚠️ rc=$rc"; fi
+  local text="🌙 *nightly-audit* ${DATE} — theme=\`${THEME}\` @${host} ${status}"
+  [[ -n "$prs" ]] && text+=$'\n'"*開いた PR:*"$'\n'"$prs"
+  if [[ -n "$body" ]]; then
+    local maxlen=3500
+    [[ ${#body} -gt $maxlen ]] && body="${body:0:$maxlen}"$'\n'"…(truncated。全文: ${report})"
+    text+=$'\n''```'$'\n'"$body"$'\n''```'
+  else
+    text+=$'\n'"(レポート未生成: ${report})"
+  fi
+  local payload
+  if command -v jq >/dev/null 2>&1; then
+    payload="$(printf '%s' "$text" | jq -Rs '{text: .}')"
+  else
+    payload="$(printf '%s' "$text" | python3 -c 'import json,sys;print(json.dumps({"text":sys.stdin.read()}))')"
+  fi
+  if curl -fsS -X POST -H 'Content-type: application/json' --data "$payload" "$webhook" >>"$LOG" 2>&1; then
+    echo "[slack] 投稿成功" | tee -a "$LOG"
+  else
+    echo "[slack] 投稿失敗 (webhook URL / ネットワークを確認)" | tee -a "$LOG"
+  fi
+}
+notify_slack || true
+
 exit $rc
