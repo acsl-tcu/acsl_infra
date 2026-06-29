@@ -47,6 +47,61 @@ sync_targets() {
   done
 }
 
+# --- Slack 通知 (任意) ------------------------------------------------------
+# 無人運用では logs/<date>-<theme>.md を誰も見に行かない。完了後に Slack へ要約を push する。
+# 秘匿値は env (cron が source する ~/.config/acsl-nightly-audit.env) で渡す。未設定なら skip。
+#   NIGHTLY_SLACK_WEBHOOK … Slack Incoming Webhook URL (作成時に決めた1チャンネルへ固定投稿)
+#   NIGHTLY_SLACK_NOTIFY  … always(既定) | on-change (PR か「要相談」がある or rc!=0 の時だけ投稿)
+# 投稿はハーネスが行う (claude には webhook を渡さない/投稿させない)。
+# SLACK_OVERRIDE_TEXT を渡すと本文をそれに固定し、レポート読取・on-change ゲートを飛ばす
+# (NIGHTLY_SLACK_TEST の自己テスト用)。
+notify_slack() {
+  set +e
+  local webhook="${NIGHTLY_SLACK_WEBHOOK:-}"
+  if [[ -z "$webhook" ]]; then
+    echo "[slack] NIGHTLY_SLACK_WEBHOOK 未設定。skip" | tee -a "$LOG"; return 0
+  fi
+  local host; host="$(hostname)"
+  local text
+  if [[ -n "${SLACK_OVERRIDE_TEXT:-}" ]]; then
+    text="$SLACK_OVERRIDE_TEXT"
+  else
+    local report="$LOG_DIR/${DATE}-${THEME}.md"
+    local prs="" body="" has_signal=0
+    if [[ -f "$report" ]]; then
+      body="$(cat "$report")"
+      prs="$(grep -oE 'https://github\.com/[^ )]+/pull/[0-9]+' "$report" 2>/dev/null | sort -u)"
+      [[ -n "$prs" ]] && has_signal=1
+      grep -qiE '要相談|要注意|warn' "$report" 2>/dev/null && has_signal=1
+    fi
+    [[ "${rc:-0}" != "0" ]] && has_signal=1
+    if [[ "${NIGHTLY_SLACK_NOTIFY:-always}" == "on-change" && "$has_signal" == "0" ]]; then
+      echo "[slack] on-change: 信号なし (PR/要相談/異常終了なし) → 投稿せず" | tee -a "$LOG"; return 0
+    fi
+    local status; if [[ "${rc:-0}" == "0" ]]; then status="✅"; else status="⚠️ rc=$rc"; fi
+    text="🌙 *nightly-audit* ${DATE} — theme=\`${THEME}\` @${host} ${status}"
+    [[ -n "$prs" ]] && text+=$'\n'"*開いた PR:*"$'\n'"$prs"
+    if [[ -n "$body" ]]; then
+      local maxlen=3500
+      [[ ${#body} -gt $maxlen ]] && body="${body:0:$maxlen}"$'\n'"…(truncated。全文: ${report})"
+      text+=$'\n''```'$'\n'"$body"$'\n''```'
+    else
+      text+=$'\n'"(レポート未生成: ${report})"
+    fi
+  fi
+  local payload
+  if command -v jq >/dev/null 2>&1; then
+    payload="$(printf '%s' "$text" | jq -Rs '{text: .}')"
+  else
+    payload="$(printf '%s' "$text" | python3 -c 'import json,sys;print(json.dumps({"text":sys.stdin.read()}))')"
+  fi
+  if curl -fsS -X POST -H 'Content-type: application/json' --data "$payload" "$webhook" >>"$LOG" 2>&1; then
+    echo "[slack] 投稿成功" | tee -a "$LOG"
+  else
+    echo "[slack] 投稿失敗 (webhook URL / ネットワークを確認)" | tee -a "$LOG"
+  fi
+}
+
 # --- テーマ選択 -------------------------------------------------------------
 mapfile -t THEMES < <(grep -vE '^\s*(#|$)' "$ROTATION")
 [[ ${#THEMES[@]} -gt 0 ]] || { echo "rotation.txt が空"; exit 1; }
@@ -98,6 +153,16 @@ exec 9>"$LOCK"
 if ! flock -n 9; then echo "別の監査が実行中。終了。"; exit 0; fi
 
 echo "[nightly-audit] $DATE theme=$THEME host=$(hostname)" | tee -a "$LOG"
+
+# --- Slack 自己テスト -------------------------------------------------------
+# NIGHTLY_SLACK_TEST=1 なら claude を起動せず Slack 投稿経路だけ確かめて終了する
+# (認証トークン不要。webhook と疎通を切り分けるため auth チェックより前に置く)。
+if [[ "${NIGHTLY_SLACK_TEST:-0}" == "1" ]]; then
+  echo "[nightly-audit] SLACK_TEST: Slack 投稿のみ試す (claude 起動なし)" | tee -a "$LOG"
+  SLACK_OVERRIDE_TEXT="🔔 *nightly-audit* Slack 連携テスト — @$(hostname) ${DATE} (claude 未起動)" \
+    notify_slack
+  exit 0
+fi
 
 # --- プロンプト構築 ---------------------------------------------------------
 PROMPT="$(cat "$HERE/driver.md")
@@ -163,53 +228,6 @@ rc=$?
 set -e
 echo "[nightly-audit] done rc=$rc" | tee -a "$LOG"
 
-# --- Slack 通知 (任意) ------------------------------------------------------
-# 無人運用では logs/<date>-<theme>.md を誰も見に行かない。完了後に Slack へ要約を push する。
-# 秘匿値は env (cron が source する ~/.config/acsl-nightly-audit.env) で渡す。未設定なら skip。
-#   NIGHTLY_SLACK_WEBHOOK … Slack Incoming Webhook URL (作成時に決めた1チャンネルへ固定投稿)
-#   NIGHTLY_SLACK_NOTIFY  … always(既定) | on-change (PR か「要相談」がある or rc!=0 の時だけ投稿)
-# 投稿はハーネスが行う (claude には webhook を渡さない/投稿させない)。
-notify_slack() {
-  set +e
-  local webhook="${NIGHTLY_SLACK_WEBHOOK:-}"
-  if [[ -z "$webhook" ]]; then
-    echo "[slack] NIGHTLY_SLACK_WEBHOOK 未設定。skip" | tee -a "$LOG"; return 0
-  fi
-  local report="$LOG_DIR/${DATE}-${THEME}.md"
-  local host; host="$(hostname)"
-  local prs="" body="" has_signal=0
-  if [[ -f "$report" ]]; then
-    body="$(cat "$report")"
-    prs="$(grep -oE 'https://github\.com/[^ )]+/pull/[0-9]+' "$report" 2>/dev/null | sort -u)"
-    [[ -n "$prs" ]] && has_signal=1
-    grep -qiE '要相談|要注意|warn' "$report" 2>/dev/null && has_signal=1
-  fi
-  [[ "$rc" != "0" ]] && has_signal=1
-  if [[ "${NIGHTLY_SLACK_NOTIFY:-always}" == "on-change" && "$has_signal" == "0" ]]; then
-    echo "[slack] on-change: 信号なし (PR/要相談/異常終了なし) → 投稿せず" | tee -a "$LOG"; return 0
-  fi
-  local status; if [[ "$rc" == "0" ]]; then status="✅"; else status="⚠️ rc=$rc"; fi
-  local text="🌙 *nightly-audit* ${DATE} — theme=\`${THEME}\` @${host} ${status}"
-  [[ -n "$prs" ]] && text+=$'\n'"*開いた PR:*"$'\n'"$prs"
-  if [[ -n "$body" ]]; then
-    local maxlen=3500
-    [[ ${#body} -gt $maxlen ]] && body="${body:0:$maxlen}"$'\n'"…(truncated。全文: ${report})"
-    text+=$'\n''```'$'\n'"$body"$'\n''```'
-  else
-    text+=$'\n'"(レポート未生成: ${report})"
-  fi
-  local payload
-  if command -v jq >/dev/null 2>&1; then
-    payload="$(printf '%s' "$text" | jq -Rs '{text: .}')"
-  else
-    payload="$(printf '%s' "$text" | python3 -c 'import json,sys;print(json.dumps({"text":sys.stdin.read()}))')"
-  fi
-  if curl -fsS -X POST -H 'Content-type: application/json' --data "$payload" "$webhook" >>"$LOG" 2>&1; then
-    echo "[slack] 投稿成功" | tee -a "$LOG"
-  else
-    echo "[slack] 投稿失敗 (webhook URL / ネットワークを確認)" | tee -a "$LOG"
-  fi
-}
 notify_slack || true
 
 exit $rc
