@@ -1,0 +1,25 @@
+# acsl nightly-audit Slack 制御ボット (poll型) の systemd user service。
+# 設置:
+#   mkdir -p ~/.config/systemd/user
+#   cp nightly_audit/slack_control.service ~/.config/systemd/user/
+#   # ↓ ExecStart 内のリポパスが ~/GitHub/sb/acsl_infra でない場合は編集する
+#   loginctl enable-linger "$USER"          # ログアウトしても常駐させる
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now slack_control
+#   journalctl --user -u slack_control -f    # ログ確認
+#
+# env ファイルは `export VAR=...` 形式 (systemd の EnvironmentFile は export を解さない)
+# なので、bash -lc で source してから起動する。
+[Unit]
+Description=acsl nightly-audit Slack control bot (poll)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/bin/bash -lc '. "%h/.config/acsl-nightly-audit.env"; exec "%h/GitHub/sb/acsl_infra/nightly_audit/slack_control.sh"'
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target
