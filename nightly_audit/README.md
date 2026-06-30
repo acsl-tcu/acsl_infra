@@ -78,6 +78,26 @@ md レポートはプル型で気づけないので、完了後にハーネス�
 - bot token + `chat.postMessage` で動的にチャンネルを選ぶ方式も可能だが、固定チャンネルなら
   webhook が最小構成。`run_nightly_audit.sh` の `notify_slack()` を差し替えれば対応できる。
 
+### 🎛️ Slack からの操作 (任意・双方向)
+webhook は送信専用。Slack から**コマンドを送る**には受信経路が要る。`slack_control.sh` は
+NAT 内・pip 無しでも動く **poll 型ボット** (curl+jq で制御チャンネルを ~15 秒間隔で取得し
+`!audit <cmd>` を実行)。
+- **セットアップ**:
+  1. Slack App に **Bot Token Scopes** `channels:history` (公開) か `groups:history` (非公開) と
+     `chat:write` を付与し、ワークスペースにインストール → **Bot User OAuth Token** (`xoxb-`) を取得。
+  2. 制御チャンネルに bot を招待し、**チャンネル ID** (`C...`) を控える。
+  3. 自分の **Slack user ID** (`U...`) を控える (実行系コマンドの allowlist 用)。
+  4. env (`~/.config/acsl-nightly-audit.env`) に設定:
+     `NIGHTLY_SLACK_BOT_TOKEN` / `NIGHTLY_SLACK_CONTROL_CHANNEL` / `NIGHTLY_SLACK_ALLOW_USERS`。
+  5. 常駐: `slack_control.service` を `~/.config/systemd/user/` に置き
+     `loginctl enable-linger $USER && systemctl --user enable --now slack_control`
+     (お試しは `./slack_control.sh` を前景実行)。
+- **コマンド** (チャンネルに投稿):
+  `!audit list` / `!audit status` / `!audit enable <theme>` / `!audit disable <theme>` / `!audit run <theme>`。
+- **安全**: `enable/disable/run` は `NIGHTLY_SLACK_ALLOW_USERS` のユーザーのみ (未設定だと実行系は無効、
+  閲覧のみ)。`run` が起動する監査は通常どおり `audit_settings.json` の deny ハードガード下で走るため、
+  EXP/force-push/main push/`rm -rf` 等はボット経由でも不可。多重起動は runner の flock が防ぐ。
+
 ### ⛔ 実機安全 (絶対)
 **この cron は実機に触れない。アクチュエーション (モーター/プロペラ/車輪) を伴う一切をしない。**
 - backend-smoke で動かすのは **SIM / SITL (純ソフトウェア)** のみ。**HITL は受動検証まで**

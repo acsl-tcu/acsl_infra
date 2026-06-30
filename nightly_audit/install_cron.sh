@@ -35,12 +35,19 @@ if [[ ! -f "$ENV_FILE" ]]; then
 # Slack 通知 (任意。設定すると完了後に要約を指定チャンネルへ投稿。未設定なら無効):
 #   NIGHTLY_SLACK_WEBHOOK=https://hooks.slack.com/services/XXX/YYY/ZZZ  # Incoming Webhook URL
 #   NIGHTLY_SLACK_NOTIFY=always   # always(既定) | on-change (PR/要相談/異常時のみ)
+# Slack 制御ボット (任意。slack_control.sh / slack_control.service 用。Slack からコマンド):
+#   NIGHTLY_SLACK_BOT_TOKEN=xoxb-...        # Bot token (scopes: channels:history|groups:history, chat:write)
+#   NIGHTLY_SLACK_CONTROL_CHANNEL=C0123...  # 制御チャンネル ID (bot を招待しておく)
+#   NIGHTLY_SLACK_ALLOW_USERS=U001,U002     # enable/disable/run を許可する Slack user ID (未設定だと実行系は無効)
 export HOME="$HOME"
 export ACSL_WORK_DIR="${ACSL_WORK_DIR:-$HOME}"
 # export CLAUDE_CODE_OAUTH_TOKEN=
 # export GH_TOKEN=
 # export NIGHTLY_SLACK_WEBHOOK=
 # export NIGHTLY_SLACK_NOTIFY=always
+# export NIGHTLY_SLACK_BOT_TOKEN=
+# export NIGHTLY_SLACK_CONTROL_CHANNEL=
+# export NIGHTLY_SLACK_ALLOW_USERS=
 EOF
   chmod 600 "$ENV_FILE"
   echo "env 雛形を作成: $ENV_FILE (トークンを記入してから cron が機能します)"
