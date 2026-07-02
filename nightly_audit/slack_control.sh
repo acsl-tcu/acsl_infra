@@ -67,14 +67,38 @@ cmd_help() {
 \`!audit disable <name>\` テーマを無効化 (rotation 削除)
 \`!audit run <name>\`     今すぐ実行 (完了は通知で)"
 }
+# テーマの短い説明を見出し "# テーマ: <name> (<説明>)" から取り出す。
+# backend-smoke-<deploy>-<mode> は共有 themes/backend-smoke.md の説明に対象を添える。
+theme_desc() {
+  local t="$1" f="$THEMES_DIR/$1.md" base
+  [[ -f "$f" ]] || { [[ "$t" == backend-smoke-* ]] && f="$THEMES_DIR/backend-smoke.md"; }
+  [[ -f "$f" ]] || return 0
+  local h; h="$(grep -m1 -E '^#[[:space:]]*テーマ' "$f" 2>/dev/null)"
+  [[ "$h" =~ \((.+)\) ]] && base="${BASH_REMATCH[1]}"
+  if [[ "$t" == backend-smoke-*-* ]]; then
+    local rest="${t#backend-smoke-}"
+    printf '%s (%s × %s)' "${base:-実起動検証}" "${rest%%-*}" "${rest#*-}"
+  else
+    printf '%s' "${base:-}"
+  fi
+}
 cmd_list() {
-  local act av
-  act="$(themes_active | paste -sd' ' -)"
-  av="$(themes_available | paste -sd' ' -)"
-  post ":card_index_dividers: *監査テーマ*
-• 有効(rotation): ${act:-なし}
-• 利用可能(themes/): ${av:-なし}
-\`!audit enable/disable/run <name>\` で操作"
+  local out=":card_index_dividers: *監査テーマ*" t d n=0
+  out+=$'\n\n'"*有効 (rotation・上から日替わりで選択)*"
+  while IFS= read -r t; do
+    [[ -z "$t" ]] && continue
+    d="$(theme_desc "$t")"; out+=$'\n'"• \`$t\`${d:+ — $d}"; n=$((n+1))
+  done < <(themes_active)
+  ((n==0)) && out+=$'\n'"(なし)"
+  out+=$'\n\n'"*利用可能 (themes/)*"
+  while IFS= read -r t; do
+    [[ -z "$t" ]] && continue
+    d="$(theme_desc "$t")"
+    if is_active "$t"; then out+=$'\n'"• \`$t\` ✅有効${d:+ — $d}"
+    else                    out+=$'\n'"• \`$t\`${d:+ — $d}"; fi
+  done < <(themes_available)
+  out+=$'\n\n'"操作: \`!audit enable/disable/run <name>\` ・ \`!audit status\`"
+  post "$out"
 }
 cmd_status() {
   mapfile -t T < <(themes_active)
