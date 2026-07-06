@@ -112,6 +112,55 @@ NAT 内・pip 無しでも動く **poll 型ボット** (curl+jq で制御チャ�
 逆に破壊系 (force-push, main への push, `rm -rf`, `reset --hard`, `gh pr merge`, `common/`
 編集, `~/ENV`/`.env` 読取) は deny で固定。deny は allow より優先なので安全側に倒れる。
 
+## 🖥️ 別 PC で再現する (ゼロから)
+
+crontab / systemd / env はホスト固有で **git に入らない**。この repo (と対象クローン) を
+置いた新 PC で以下を上から実行すれば同じ無人運用を再現できる。各項目の詳細は上記の
+該当セクション参照。
+
+```bash
+# 0. 前提: git / gh / jq / curl / claude(CLI) が入っていること。
+#    git identity と gh 認証を済ませる (無人 PR 作成に必須)。
+git config --global user.name  "Your Name"
+git config --global user.email "you@example.com"
+gh auth status        # 通らなければ gh auth login か GH_TOKEN を後で env に
+
+# 1. ソースクローンと稼働 checkout を ~/GitHub/sb と ~/rover, ~/drone に用意
+#    (targets.conf が参照するパス。詳細は「無人運用の前提」5)
+
+# 2. claude の非対話トークンを対話マシンで発行 (サブスク勢)
+claude setup-token    # 出力の CLAUDE_CODE_OAUTH_TOKEN を控える
+
+# 3. env 雛形を作る → トークンを記入 (chmod 600 は install_cron.sh が付与)
+cd ~/GitHub/sb/acsl_infra/nightly_audit
+./install_cron.sh                     # 雛形 ~/.config/acsl-nightly-audit.env を生成 + cron 登録
+chmod 600 ~/.config/acsl-nightly-audit.env
+#   記入: CLAUDE_CODE_OAUTH_TOKEN(必須) / GH_TOKEN(gh 未認証時) /
+#         NIGHTLY_SLACK_WEBHOOK・NOTIFY(通知) / NIGHTLY_SLACK_BOT_TOKEN・
+#         CONTROL_CHANNEL・ALLOW_USERS(Slack 操作)  ← 詳細は各 Slack 節
+
+# 4. targets.conf を新 PC のパス/対象に合わせる
+
+# 5. cron 登録の確認 (install_cron.sh で既に入っている)
+crontab -l | grep acsl-nightly-audit  # 30 2 * * * … の1行があればOK
+
+# 6. Slack 制御ボットを常駐させる (双方向操作が要るなら)
+mkdir -p ~/.config/systemd/user
+cp slack_control.service ~/.config/systemd/user/
+loginctl enable-linger "$USER"        # ログアウト/再起動後も起動
+systemctl --user daemon-reload
+systemctl --user enable --now slack_control
+systemctl --user status slack_control # active を確認
+
+# 7. 疎通テスト (claude を起動せず Slack 投稿経路だけ検査)
+NIGHTLY_SLACK_TEST=1 ./run_nightly_audit.sh
+```
+
+再現できたかの確認: `crontab -l` に監査行がある / `systemctl --user is-active
+slack_control` が `active` / Slack で `!audit list` が返る、の3点。
+**git 追跡外で手当てが要るのは env のトークン・crontab・systemd 有効化の3つだけ** —
+スクリプト/service ユニット/設定はすべてこの repo に入っている。
+
 ## テーマ一覧 (現状)
 - `docs-drift` — ドキュメント/コメントと実装の乖離 (★お手本・実績あり)
 - `ros2-structure` — ROS2/パイプライン構造の健全性 (☆スタブ)

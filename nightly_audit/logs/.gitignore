@@ -1,4 +1,5 @@
-# 実行ログ・cron ログ・ロックは管理外。監査レポート (<date>-<theme>.md) は手動で残す想定。
+# 実行ログ・cron ログ・ロック・実行状態は管理外。監査レポート (<date>-<theme>.md) は手動で残す想定。
 *.run.log
 cron.log
 .lock
+.slack_control.last_ts
