@@ -10,6 +10,16 @@ source $ACSL_ROS2_DIR/docker/common/scripts/super_echo
 
 IMAGE=${1:-image_${PROJECT}${x86}}
 
+# ホスト側 clone ($ACSL_WORK_DIR/common) を最新化してからイメージへ焼く。
+# (project の setup が読み取り専用にしているため一時的に書込み許可して pull)
+if [[ -n "${ACSL_WORK_DIR:-}" && -d "$ACSL_WORK_DIR/common/.git" ]]; then
+  gecho "UPDATE_COMMON: git pull $ACSL_WORK_DIR/common"
+  chmod -R u+w "$ACSL_WORK_DIR/common"
+  git -C "$ACSL_WORK_DIR/common" pull --ff-only \
+    || recho "git pull failed — 現在のローカル copy のまま続行"
+  chmod -R a+rx,a-w "$ACSL_WORK_DIR/common"
+fi
+
 gecho "UPDATE_COMMON: install latest project_common into ${IMAGE}"
 
 dup --image=${IMAGE} dev

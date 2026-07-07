@@ -70,6 +70,30 @@ source /root/ros2_ws/install/setup.bash
 ros2 run <package_name> <executable_name>
 ```
 
-## 9. 補足
+## 9. メインノードの main() 定型 (必須)
+
+制御ループを持つノードの `main()` は project_common の
+`acsl.utils.realtime.spin` を使うこと:
+
+```python
+from acsl.utils.realtime import spin
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = MyNode()
+    spin(node)      # executor 選択 + GC 対策 + spin + destroy の定型
+    rclpy.shutdown()
+```
+
+理由: rclpy (jazzy) の `MultiThreadedExecutor` は購読トラフィックがあると
+busy-loop してタイマーが飢餓する (40Hz timer 実測: MTE+購読 p50=72ms/
+max=489ms/CPU104% vs Single p50=25.0ms/CPU4%)。引数なしではさらに CPU
+コア数分のスレッドを生成する。project_drone2 の実機で「制御ステップが
+散発的に数百 ms 停止」の原因になった (project_drone2#127)。
+`spin()` は SingleThreadedExecutor 既定 + GC 世代2の停止抑制まで行う。
+ブロックする処理 (HTTP/serial 等) はコールバックに置かず独自スレッドへ。
+一時的に戻す場合は env `ACSL_EXECUTOR=multi[:N]`。
+
+## 10. 補足
 - `commands/scripts/`に便利コマンド（`dps`, `dlogs`, `dup`など）がある。
 - ROSパッケージは`packages/`配下に配置する。
