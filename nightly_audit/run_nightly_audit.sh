@@ -212,7 +212,8 @@ echo "[nightly-audit] sync targets to latest main ..." | tee -a "$LOG"
 sync_targets "$LOG" || true   # sync の不調で監査全体を止めない (origin/main は fetch 済)
 
 # --- claude 無人起動 --------------------------------------------------------
-# --bare       : OAuth refresh / keyring / plugin ロードをスキップ (無人必須)
+# --bare 禁止  : --bare は CLAUDE_CODE_OAUTH_TOKEN を読まず "Not logged in" になる
+#                (2.1.207 で確認)。headless は -p だけで keyring ハング等は起きない。
 # dontAsk      : 許可リスト外は静かに拒否 = ハングしない。deny>ask>allow で deny 最優先。
 # --settings   : audit_settings.json (allow=監査が使うコマンド, deny=破壊系ハードガード)
 CLAUDE_BIN="${CLAUDE_BIN:-claude}"
@@ -221,7 +222,7 @@ SETTINGS="$HERE/audit_settings.json"
 
 cd "${ACSL_WORK_DIR:-$HOME}"
 set +e
-"$CLAUDE_BIN" --bare -p "$PROMPT" \
+"$CLAUDE_BIN" -p "$PROMPT" \
   --permission-mode "$PERMISSION_MODE" \
   --settings "$SETTINGS" >>"$LOG" 2>&1
 rc=$?
