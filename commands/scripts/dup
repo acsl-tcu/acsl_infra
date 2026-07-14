@@ -84,6 +84,15 @@ done
 source $ACSL_ROS2_DIR/docker/common/scripts/super_echo
 source $ACSL_ROS2_DIR/bashrc
 
+# .env が無いと Docker が bind-mount 元 ($ACSL_WORK_DIR/.env) を空ディレクトリとして
+# 自動生成し、コンテナ内 /root/ros2_ws/.env もディレクトリ化する
+# (docker-compose.yml: $ACSL_WORK_DIR/.env:/root/ros2_ws/.env)。それが dcommit で
+# イメージに焼き込まれると、後からホストに .env ファイルを置いたとき file/dir 不整合で
+# "not a directory" マウント失敗になる。無いときだけ空ファイルを用意して回避する。
+if [ -n "$ACSL_WORK_DIR" ] && [ ! -e "$ACSL_WORK_DIR/.env" ]; then
+  touch "$ACSL_WORK_DIR/.env"
+fi
+
 # 呼び出し元シェルが持っていた RID と設定ファイル($ACSL_ROS2_DIR/bashrc)の RID が
 # 食い違っている場合に通知する。別端末で setrid した後など、手元シェルが古い RID の
 # まま取り残されているケースを検知する (dup 自体は常にファイル値で起動する)。
