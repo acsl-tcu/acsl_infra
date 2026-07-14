@@ -12,6 +12,9 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
   if [[ -z "$2" ]]; then
     echo "Usage: dup [-h] <container_name> [args...]"
     echo "  dup <name> [args]   : launch container"
+    echo "  dup <name>:<inst> [args] : launch container <name>_<inst>"
+    echo "                        (image/launcher は <name> のものを使う。"
+    echo "                         マルチ機体で同一 role を複数立てる用途)"
     echo "  dup -h <name>       : show launcher help"
     echo "  dup all             : launch all containers"
     echo "  dup dev             : launch dev container"
@@ -70,8 +73,9 @@ compose=" -f ${ACSL_ROS2_DIR}/docker/docker-compose.yml "
 # dockerfiles/ → ルート の順で探索する (ルートは後方互換)。
 # dup all 経由で project_launch.sh が cd した後でも検出できるよう
 # CWD ではなく ACSL_WORK_DIR を使う。
-for ov in "${ACSL_WORK_DIR}/dockerfiles/docker-compose_${1}.yml" \
-          "${ACSL_WORK_DIR}/docker-compose_${1}.yml"; do
+# role:instance 記法 (drone2:dr1 等) は role 側のファイルで解決する。
+for ov in "${ACSL_WORK_DIR}/dockerfiles/docker-compose_${1%%:*}.yml" \
+          "${ACSL_WORK_DIR}/docker-compose_${1%%:*}.yml"; do
   if [[ -f "$ov" ]]; then
     compose=${compose}" -f ${ov} "
     echo ":::::::::::::::::::::::::::::"
@@ -130,12 +134,21 @@ if [ $# -ge 1 ]; then
     $ACSL_WORK_DIR/project_launch.sh ${@:2:($# - 1)}
   else
     launch_args=${@:2:($# - 1)}
+    # role:instance 記法 (例: dup drone2:dr1 omni/multi/dr1.yaml)。
+    # image/launcher の解決は role (drone2) で行い、コンテナ名だけ
+    # role_instance (drone2_dr1) に分離する。マルチ機体で同一 role の
+    # コンテナを機体数分立てる用途 (drone2 の project_launch.sh SITL_OMNI 参照)。
+    ROLE=$1
     CONTAINER_NAME=$1
-    if [[ -n "$launch_args" && "$(docker inspect -f '{{.State.Running}}' $1 2>/dev/null)" = "true" ]]; then
-      CONTAINER_NAME="$1_${2//:=/_}"
+    if [[ "$1" == *:* ]]; then
+      ROLE=${1%%:*}
+      CONTAINER_NAME="${ROLE}_${1#*:}"
+    fi
+    if [[ -n "$launch_args" && "$(docker inspect -f '{{.State.Running}}' $CONTAINER_NAME 2>/dev/null)" = "true" ]]; then
+      CONTAINER_NAME="${CONTAINER_NAME}_${2//:=/_}"
     fi
     #LARGS=$launch_args HOSTNAME=$(hostname | sed -e 's/-/_/g') docker compose --env-file envfiles/env.$1 up common -d
-    TAG=$1
+    TAG=$ROLE
     echo "===== TAG: ${TAG%%_x86*}${x86} ===="
     if [[ $OPT != "" ]]; then
       cimage=${OPT}
@@ -193,16 +206,18 @@ if [ $# -ge 1 ]; then
       echo "== image ${cimage} exists"
       TAG=${cimage}
     fi
-    ROS_LAUNCH=$(ls -v $ACSL_WORK_DIR/launcher/ | grep launch_$1 | fmt | awk '{print $NF}')
+    ROS_LAUNCH=$(ls -v $ACSL_WORK_DIR/launcher/ | grep launch_${ROLE} | fmt | awk '{print $NF}')
 
-    if [[ $1 == "dev" ]]; then
+    if [[ $ROLE == "dev" ]]; then
       cp $ACSL_ROS2_DIR/launcher/launch_dev.sh $ACSL_WORK_DIR/launcher/
       chmod a+x $ACSL_WORK_DIR/launcher/launch_dev.sh
       ROS_LAUNCH=launch_dev.sh
       CONTAINER_NAME=dev
     fi
 
-    str=$(dps | grep -v Exited | awk '{print $NF}' | sed -e 's/NAMES//' | grep ^${CONTAINER_NAME})
+    # 完全一致で判定する (前方一致だと drone2 の判定が drone2_dr1 等の
+    # インスタンスコンテナにもヒットして誤って exec パスに入る)。
+    str=$(dps | grep -v Exited | awk '{print $NF}' | sed -e 's/NAMES//' | grep -x "${CONTAINER_NAME}")
     echo $str
     if [[ -z $str ]]; then
       echo "TAG=$TAG CONTAINER_NAME=${CONTAINER_NAME} COMPOSE_PROJECT_NAME=${CONTAINER_NAME,,}_${PROJECT,,} ROS_LAUNCH=$ROS_LAUNCH LARGS=$launch_args HOSTNAME=$(hostname | sed -e 's/-/_/g') docker compose ${compose} up common -d"
