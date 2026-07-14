@@ -3,7 +3,10 @@
 if [ ${HOSTNAME:0:1} == "D" ]; then
   ros_packages=$(ls ~/ros2_ws/src/ros_packages)
 else
-  ros_packages=$(grep -RhoP '(?<=<name>)[^<]+' $ACSL_WORK_DIR/packages  | sort -u)
+  # --include=package.xml で対象を package.xml に限定する。
+  # 限定しないと packages/ 配下のコメント/README/docstring に含まれる <name> 文字列まで
+  # 拾い、colcon --packages-select に不正トークンが混入する (unknown package 警告)。
+  ros_packages=$(grep -RhoP '(?<=<name>)[^<]+' --include=package.xml $ACSL_WORK_DIR/packages  | sort -u)
 fi
 
 echo ${ros_packages/README_ROS.md/}
