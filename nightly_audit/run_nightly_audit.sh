@@ -192,6 +192,42 @@ if [[ "${DRY_RUN:-0}" == "1" ]]; then
   echo "----- DRY_RUN: prompt -----"; echo "$PROMPT"; exit 0
 fi
 
+# --- backend-smoke: ホスト使用中ゲート (監査 2026-07-13〜15 ブロッカー B) -----
+# 対象 project 以外のコンテナが Up のまま bringup すると GPU/DDS/ポートで干渉しうる。
+# その場合は claude を起動せず、スキップした旨をレポート/Slack に残して正常終了する。
+# 対象 project のコンテナ名 = $SMOKE_PATH/launcher/launch_<name>.sh の <name>
+# (dup が CONTAINER_NAME に使う。インスタンス <name>_<inst> も同一視)。
+# 常駐コンテナ (例: switchbot) は env の NIGHTLY_SMOKE_IGNORE=name1,name2 で除外する。
+if [[ -n "$SMOKE_PATH" ]] && command -v docker >/dev/null 2>&1; then
+  mapfile -t OWN < <(ls "$SMOKE_PATH/launcher/" 2>/dev/null | sed -nE 's/^launch_(.+)\.sh$/\1/p')
+  FOREIGN=()
+  while IFS= read -r c; do
+    [[ -z "$c" ]] && continue
+    keep=1
+    for o in "${OWN[@]}"; do [[ "$c" == "$o" || "$c" == "${o}_"* ]] && { keep=0; break; }; done
+    [[ ",${NIGHTLY_SMOKE_IGNORE:-}," == *",$c,"* ]] && keep=0
+    [[ "$keep" == 1 ]] && FOREIGN+=("$c")
+  done < <(docker ps --format '{{.Names}}' 2>/dev/null)
+  if [[ ${#FOREIGN[@]} -gt 0 ]]; then
+    REPORT="$LOG_DIR/${DATE}-${THEME}.md"
+    {
+      echo "# Nightly Audit ${DATE} — ${THEME} (host: $(hostname))"
+      echo
+      echo "## 結論"
+      echo "**smoke スキップ (ホスト使用中ゲート・要注意)。claude 未起動・PR なし・既存コンテナには未接触。**"
+      echo
+      echo "対象 project (${SMOKE_DEPLOY}) 以外のコンテナが Up のため、干渉回避で bringup せず終了:"
+      for c in "${FOREIGN[@]}"; do echo "- \`${c}\`"; done
+      echo
+      echo "常駐等で無視してよいコンテナは env の \`NIGHTLY_SMOKE_IGNORE\` (カンマ区切り) に追加する。"
+    } > "$REPORT"
+    echo "[nightly-audit] busy gate: 対象外コンテナ Up (${FOREIGN[*]}) → smoke スキップ" | tee -a "$LOG"
+    rc=0
+    notify_slack || true
+    exit 0
+  fi
+fi
+
 # --- 無人実行の前提チェック (README「無人運用の前提」参照) -------------------
 # cron は対話ログインの資格 (keyring / ~/.claude/.credentials.json) を TTY 無しで
 # 使えない。必ず env でトークンを渡す。どちらか一方が要る:
