@@ -211,6 +211,19 @@ fi
 echo "[nightly-audit] sync targets to latest main ..." | tee -a "$LOG"
 sync_targets "$LOG" || true   # sync の不調で監査全体を止めない (origin/main は fetch 済)
 
+# --- backend-smoke: acsl env を claude セッションに継承させる ----------------
+# dup 等の acsl コマンドは deploy checkout の .acsl/bashrc が PATH/env を作る設計だが、
+# cron 起動の headless セッションにはそれが無く dup が rc=127 になる
+# (2026-07-13〜15 監査ブロッカー A)。dup は先頭で $ACSL_ROS2_DIR/bashrc を source して
+# PROJECT/ROS_DOMAIN_ID 等を自力復元するので、ここでは PATH と WORK/ROS2 DIR だけ渡す。
+# 副作用: 下の cd "${ACSL_WORK_DIR:-$HOME}" により claude は deploy checkout で起動する。
+if [[ -n "$SMOKE_PATH" && -d "$SMOKE_PATH/.acsl" ]]; then
+  export ACSL_WORK_DIR="$SMOKE_PATH"
+  export ACSL_ROS2_DIR="$SMOKE_PATH/.acsl"
+  export PATH="$SMOKE_PATH/.acsl/commands/scripts:$SMOKE_PATH/.acsl/docker/common/scripts:$PATH"
+  echo "[nightly-audit] acsl env exported (ACSL_WORK_DIR=$SMOKE_PATH)" | tee -a "$LOG"
+fi
+
 # --- claude 無人起動 --------------------------------------------------------
 # --bare 禁止  : --bare は CLAUDE_CODE_OAUTH_TOKEN を読まず "Not logged in" になる
 #                (2.1.207 で確認)。headless は -p だけで keyring ハング等は起きない。
