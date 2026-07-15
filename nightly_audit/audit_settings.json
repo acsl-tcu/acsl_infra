@@ -32,7 +32,6 @@
       "Bash(rm -rf *)",
       "Bash(sudo *)",
       "Edit(**/common/**)",
-      "Write(**/common/**)",
       "Edit(**/.git/**)",
       "Read(**/.env)",
       "Read(~/ENV/**)",
