@@ -260,6 +260,18 @@ if [[ -n "$SMOKE_PATH" && -d "$SMOKE_PATH/.acsl" ]]; then
   echo "[nightly-audit] acsl env exported (ACSL_WORK_DIR=$SMOKE_PATH)" | tee -a "$LOG"
 fi
 
+# --- image-refresh: acsl infra コマンド (dbuild/dpush) を claude に継承 -------
+# dbuild は $ACSL_ROS2_DIR (docker/ と dockerfiles/ の解決) と ROS_DISTRO (build-arg) が
+# 必要。dontAsk では env 前置コマンド (ROS_DISTRO=... dbuild) が deny されるため、
+# ここで export して Bash tool に継承させる。checkout は監査が動くこのリポ自身を使う。
+if [[ "$THEME" == "image-refresh" ]]; then
+  INFRA_DIR="$(cd "$HERE/.." && pwd)"
+  export ACSL_ROS2_DIR="$INFRA_DIR"
+  export ROS_DISTRO="jazzy"
+  export PATH="$INFRA_DIR/commands/scripts:$INFRA_DIR/docker/common/scripts:$PATH"
+  echo "[nightly-audit] acsl infra env exported (ACSL_ROS2_DIR=$INFRA_DIR, ROS_DISTRO=jazzy)" | tee -a "$LOG"
+fi
+
 # --- claude 無人起動 --------------------------------------------------------
 # --bare 禁止  : --bare は CLAUDE_CODE_OAUTH_TOKEN を読まず "Not logged in" になる
 #                (2.1.207 で確認)。headless は -p だけで keyring ハング等は起きない。
