@@ -15,7 +15,11 @@
       "Bash(colcon *)", "Bash(python -m py_compile *)", "Bash(python3 -m py_compile *)",
       "Bash(bash -n *)", "Bash(dup *)", "Bash(dps*)", "Bash(dlogs *)", "Bash(din *)",
       "Bash(build_project*)", "Bash(drm *)", "Bash(acsl *)",
-      "Bash(docker ps*)", "Bash(docker logs *)", "Bash(docker rm *)"
+      "Bash(docker ps*)", "Bash(docker logs *)", "Bash(docker rm *)",
+      "Bash(docker images*)", "Bash(docker inspect *)", "Bash(df *)",
+      "Bash(docker pull ros:*)", "Bash(dbuild *)", "Bash(dpush jazzy_x86)",
+      "Bash(docker run --rm kasekiguchi/acsl-common:jazzy_x86 *)",
+      "Bash(docker image prune -f)"
     ],
     "deny": [
       "Bash(dup * EXP*)",

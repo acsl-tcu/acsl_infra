@@ -22,6 +22,10 @@ backend-smoke-drone-SITL_OMNI
 backend-smoke-rover-SIM
 backend-smoke-rover-isaacsim
 
+# Hub ベースイメージ (jazzy_x86) の定期再ビルド & push。放置すると派生イメージと
+# apt スキューが起きる (2026-07 実例)。11日周期で十分新鮮に保てる。
+image-refresh
+
 # --- 予約 (themes/ を作ったら上に移して有効化) ---
 # config-consistency   rover.yaml 唯一デフォルト源・ハードコード禁止規約の遵守
 # deps-drift           base image / ROS2 distro / Python pin のバージョンずれ
