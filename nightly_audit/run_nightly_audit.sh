@@ -269,7 +269,11 @@ if [[ "$THEME" == "image-refresh" ]]; then
   export ACSL_ROS2_DIR="$INFRA_DIR"
   export ROS_DISTRO="jazzy"
   export PATH="$INFRA_DIR/commands/scripts:$INFRA_DIR/docker/common/scripts:$PATH"
-  echo "[nightly-audit] acsl infra env exported (ACSL_ROS2_DIR=$INFRA_DIR, ROS_DISTRO=jazzy)" | tee -a "$LOG"
+  # dbuild --no-cache は 30〜60 分かかる。Bash tool の既定 2 分 / 上限 10 分では
+  # ビルドが途中で殺されるため、このテーマだけ上限を 90 分に引き上げる。
+  export BASH_DEFAULT_TIMEOUT_MS=5400000
+  export BASH_MAX_TIMEOUT_MS=5400000
+  echo "[nightly-audit] acsl infra env exported (ACSL_ROS2_DIR=$INFRA_DIR, ROS_DISTRO=jazzy, bash timeout 90min)" | tee -a "$LOG"
 fi
 
 # --- claude 無人起動 --------------------------------------------------------
