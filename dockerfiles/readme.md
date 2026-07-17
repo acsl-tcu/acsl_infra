@@ -13,6 +13,14 @@ up  => dup
 ベース系だけ　humble/humble_x86, jazzy/jazzy_x86 など
 image_rf_robot などはbase イメージからプロジェクトのデプロイ時や setupコマンドで作成・更新する
 
+### 正式イメージ (nightly 昇格) — 2026-07 追加
+
+- ベース (`jazzy_x86`) は nightly の `image-refresh` テーマが定期再ビルド & push する。
+- ベース更新後、nightly harness が `nightly_audit/derived_images.conf` の連鎖で
+  プロジェクト派生イメージ (image_*, mavros2, nav2 等) を再ビルドし、
+  その deploy の全許可 mode の backend-smoke が PASS した時点で自動 dpush される。
+  これが**正式イメージ** (= 監査済み) の供給経路。**派生イメージの手動 dpush は原則しない**。
+
 ## ベースイメージの作成
 
 ```bash

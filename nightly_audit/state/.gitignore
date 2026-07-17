@@ -1,0 +1,4 @@
+# 正式イメージ昇格の台帳 (ホスト固有の実行状態: base_id / smoke-pass-<deploy>-<mode> /
+# promoted-<deploy>)。中身は git 管理外。このファイルだけ追跡してディレクトリを保つ。
+*
+!.gitignore

@@ -47,6 +47,112 @@ sync_targets() {
   done
 }
 
+# --- 派生イメージ再ビルド & 正式イメージ昇格 --------------------------------
+# 基幹 (jazzy_x86) が更新された晩 (image-refresh) に derived_images.conf の連鎖を
+# 機械的に再ビルドし、昇格台帳 (state/) をリセットする。以降の backend-smoke が
+# レポート末尾の `SMOKE_RESULT: PASS` を積み、deploy の全許可 mode が現 base 由来で
+# PASS した時点でその deploy の派生イメージ群を dpush = 「正式イメージ」とする。
+# 機械的な工程は claude に任せずすべてここ (harness) で行う。
+STATE_DIR="$HERE/state"
+DERIVED_CONF="$HERE/derived_images.conf"
+BASE_TAG="kasekiguchi/acsl-common:jazzy_x86"
+DBUILD="$HERE/../commands/scripts/dbuild"
+DPUSH="$HERE/../commands/scripts/dpush"
+
+current_base_id() { docker images -q "$BASE_TAG" 2>/dev/null | head -1; }
+
+deploy_field() { # $1=deploy 名, $2=フィールド番号 (3=path, 5=modes)
+  grep -vE '^[[:space:]]*(#|$)' "$TARGETS" | awk -F'|' -v n="$1" -v f="$2" '
+    { for (i=1;i<=NF;i++) gsub(/^[ \t]+|[ \t]+$/, "", $i) }
+    $1=="deploy" && $2==n { print $f; exit }'
+}
+
+rebuild_derived_images() {
+  local logf="$1"
+  [[ -f "$DERIVED_CONF" ]] || { echo "[derived] $DERIVED_CONF 無し。skip" | tee -a "$logf"; return 0; }
+  command -v docker >/dev/null 2>&1 || { echo "[derived] docker 無し。skip" | tee -a "$logf"; return 0; }
+  local base_id; base_id="$(current_base_id)"
+  [[ -n "$base_id" ]] || { echo "[derived] base ($BASE_TAG) がローカルに無い。skip" | tee -a "$logf"; return 0; }
+  if [[ "$(cat "$STATE_DIR/base_id" 2>/dev/null)" == "$base_id" ]]; then
+    echo "[derived] base 変化なし ($base_id)。派生再ビルド skip" | tee -a "$logf"; return 0
+  fi
+  mkdir -p "$STATE_DIR"
+  echo "[derived] base 更新検知 (→ $base_id)。派生イメージ再ビルド開始" | tee -a "$logf"
+  local fail=0 dep itag otag df dpath
+  while IFS='|' read -r dep itag otag df; do
+    dep="$(echo "$dep" | xargs)"; itag="$(echo "$itag" | xargs)"
+    otag="$(echo "$otag" | xargs)"; df="$(echo "$df" | xargs)"
+    [[ -n "$dep" ]] || continue
+    dpath="$(deploy_field "$dep" 3)"; dpath="${dpath/#\~/$HOME}"
+    [[ -d "$dpath/.acsl" ]] || { echo "[derived] $dep: $dpath/.acsl 無し skip" | tee -a "$logf"; continue; }
+    echo "[derived] $dep: dbuild $itag $otag $df ..." | tee -a "$logf"
+    if (cd "$dpath" && ACSL_WORK_DIR="$dpath" ACSL_ROS2_DIR="$dpath/.acsl" \
+          ROS_DISTRO="${ROS_DISTRO:-jazzy}" "$DBUILD" "$itag" "$otag" "$df" >>"$logf" 2>&1); then
+      echo "[derived] $dep: $otag OK" | tee -a "$logf"
+    else
+      echo "[derived] $dep: $otag 失敗" | tee -a "$logf"; fail=1
+    fi
+  done < <(grep -vE '^[[:space:]]*(#|$)' "$DERIVED_CONF")
+  if [[ "$fail" == 0 ]]; then
+    echo "$base_id" > "$STATE_DIR/base_id"
+    rm -f "$STATE_DIR"/smoke-pass-* "$STATE_DIR"/promoted-* 2>/dev/null || true
+    echo "[derived] 全ビルド成功。昇格台帳リセット (以降の smoke PASS を base=$base_id で集計)" | tee -a "$logf"
+  else
+    echo "[derived] 失敗あり。台帳 base 未更新 = この base では昇格しない (次回 image-refresh で再試行)" | tee -a "$logf"
+  fi
+}
+
+record_smoke_and_promote() {
+  local logf="$1" report="$LOG_DIR/${DATE}-${THEME}.md"
+  [[ -n "$SMOKE_DEPLOY" && -f "$report" ]] || return 0
+  command -v docker >/dev/null 2>&1 || return 0
+  local result
+  result="$(grep -oE 'SMOKE_RESULT:[[:space:]]*(PASS|FAIL|BLOCKED)' "$report" 2>/dev/null | tail -1 | grep -oE 'PASS|FAIL|BLOCKED' || true)"
+  [[ -n "$result" ]] || { echo "[promote] SMOKE_RESULT 行が無い (テーマ仕様参照)。台帳更新なし" | tee -a "$logf"; return 0; }
+  [[ "$result" == "PASS" ]] || { echo "[promote] $SMOKE_DEPLOY-$SMOKE_MODE: $result → 台帳更新なし" | tee -a "$logf"; return 0; }
+  local base_id base_rec; base_id="$(current_base_id)"
+  base_rec="$(cat "$STATE_DIR/base_id" 2>/dev/null || true)"
+  if [[ -z "$base_rec" || "$base_id" != "$base_rec" ]]; then
+    echo "[promote] PASS だが台帳 base (${base_rec:-なし}) が現 base ($base_id) と不一致 → 記録しない (派生再ビルド待ち)" | tee -a "$logf"
+    return 0
+  fi
+  mkdir -p "$STATE_DIR"
+  echo "$base_id $DATE" > "$STATE_DIR/smoke-pass-${SMOKE_DEPLOY}-${SMOKE_MODE}"
+  echo "[promote] PASS 記録: $SMOKE_DEPLOY-$SMOKE_MODE (base=$base_id)" | tee -a "$logf"
+  if [[ "$(awk '{print $1}' "$STATE_DIR/promoted-$SMOKE_DEPLOY" 2>/dev/null)" == "$base_id" ]]; then
+    echo "[promote] $SMOKE_DEPLOY はこの base で昇格済み" | tee -a "$logf"; return 0
+  fi
+  local modes_csv m missing=""
+  modes_csv="$(deploy_field "$SMOKE_DEPLOY" 5 | tr -d ' ')"
+  IFS=',' read -ra _MODES <<< "$modes_csv"
+  for m in "${_MODES[@]}"; do
+    [[ "$(awk '{print $1}' "$STATE_DIR/smoke-pass-${SMOKE_DEPLOY}-${m}" 2>/dev/null)" == "$base_id" ]] || missing+="$m "
+  done
+  if [[ -n "$missing" ]]; then
+    echo "[promote] $SMOKE_DEPLOY: 未 PASS mode (${missing% }) → 昇格待ち" | tee -a "$logf"
+    { echo; echo "---"; echo "**昇格台帳**: base \`$base_id\` — 残り mode: ${missing% } (全 PASS で正式イメージ dpush)"; } >> "$report"
+    return 0
+  fi
+  echo "[promote] $SMOKE_DEPLOY: 全 mode ($modes_csv) PASS → 正式イメージとして dpush 開始" | tee -a "$logf"
+  local dep itag otag df pushed="" pfail=0
+  while IFS='|' read -r dep itag otag df; do
+    dep="$(echo "$dep" | xargs)"; otag="$(echo "$otag" | xargs)"
+    [[ "$dep" == "$SMOKE_DEPLOY" ]] || continue
+    if "$DPUSH" "$otag" >>"$logf" 2>&1; then
+      pushed+="$otag "
+    else
+      echo "[promote] dpush $otag 失敗" | tee -a "$logf"; pfail=1
+    fi
+  done < <(grep -vE '^[[:space:]]*(#|$)' "$DERIVED_CONF")
+  if [[ "$pfail" == 0 && -n "$pushed" ]]; then
+    echo "$base_id $DATE" > "$STATE_DIR/promoted-$SMOKE_DEPLOY"
+    echo "[promote] $SMOKE_DEPLOY 昇格完了: ${pushed% }" | tee -a "$logf"
+    { echo; echo "---"; echo "**🎖 正式イメージ昇格**: $SMOKE_DEPLOY の全 mode ($modes_csv) が base \`$base_id\` 由来で PASS。dpush 済み: ${pushed% }"; } >> "$report"
+  else
+    { echo; echo "---"; echo "**要相談**: $SMOKE_DEPLOY は全 mode PASS だが dpush に失敗あり (成功: ${pushed:-なし})。ログ: $logf"; } >> "$report"
+  fi
+}
+
 # --- Slack 通知 (任意) ------------------------------------------------------
 # 無人運用では logs/<date>-<theme>.md を誰も見に行かない。完了後に Slack へ要約を push する。
 # 秘匿値は env (cron が source する ~/.config/acsl-nightly-audit.env) で渡す。未設定なら skip。
@@ -293,6 +399,14 @@ set +e
 rc=$?
 set -e
 echo "[nightly-audit] done rc=$rc" | tee -a "$LOG"
+
+# --- 後処理: 派生イメージ再ビルド (image-refresh) / 昇格台帳 (backend-smoke) --
+# Slack 通知より前に行う (レポートに追記した昇格状況を通知本文に含めるため)。
+if [[ "$THEME" == "image-refresh" ]]; then
+  rebuild_derived_images "$LOG" || true
+elif [[ -n "$SMOKE_DEPLOY" ]]; then
+  record_smoke_and_promote "$LOG" || true
+fi
 
 notify_slack || true
 

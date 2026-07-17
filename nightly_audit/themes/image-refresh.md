@@ -47,8 +47,11 @@
 ## レポートに必ず書くこと
 - 旧/新 IMAGE ID と CREATED、`ros:jazzy` の digest 更新有無、検証結果 (pkg 数)、
   push 成否、prune で回収した容量。
-- 派生イメージ (image_* 等) は**このテーマでは再ビルドしない** (デプロイ時 / setup で
-  ベースから作り直される設計)。ベース更新が入った晩は「派生は次回 deploy 時に追従」と記載。
+- 派生イメージ (image_* 等) は**このテーマ (claude) では再ビルドしない**。ベース更新が
+  成功した晩は、テーマ終了後に **harness が `derived_images.conf` の連鎖を自動再ビルド**し、
+  昇格台帳 (state/) をリセットする。以降の backend-smoke が全 mode PASS した deploy の
+  派生イメージが正式イメージとして dpush される。レポートには「派生再ビルドは harness が
+  実施 (run.log 参照)」と記載すればよい。
 
 ## やらないこと (安全境界・絶対)
 - `jazzy_x86` 以外のタグを push しない (image_*, isaac 系, humble, arm 無印を含む)。
