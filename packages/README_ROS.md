@@ -36,7 +36,7 @@ ROSパッケージの詳細
 
 * 飛行システムの起動
 
-[systemdの設定](../systemd_files/README_SYSTEMD.md)が済んでいれば電源投入で自動的に起動する。
+[systemdの設定](../commands/README_SYSTEMD.md)が済んでいれば電源投入で自動的に起動する。
 
 * 個別のパッケージの起動（HOSTから）
 
