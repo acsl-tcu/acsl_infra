@@ -147,7 +147,7 @@ dps
 
 ## Debug用コマンド
 
-docker/common/scripts 内の便利コマンド
+commands/scripts 内の便利コマンド (gpull のみ docker/common/scripts)
 
 ```bash
 # = git pull + commitしていない編集の削除 + 権限関係の整理

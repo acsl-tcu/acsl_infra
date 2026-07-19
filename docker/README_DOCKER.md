@@ -1,10 +1,10 @@
 # README for Docker system
 
-First read [README_SYSTEM.md](../README_SYSTEM.md) and complete the setup section
+First read [README.md](../README.md) and complete the setup section
 
 ## Terminology
 
-Refer to [README_SYSTEM.md](../README_SYSTEM.md) for the common terminologies.
+Refer to [README.md](../README.md) for the common terminologies.
 
 <https://docs.docker.jp/engine/reference/commandline/compose.html>
 
@@ -32,7 +32,7 @@ Refer to [README_SYSTEM.md](../README_SYSTEM.md) for the common terminologies.
 
 * 飛行システムの起動
 
-[systemdの設定](../systemd_files/README_SYSTEMD.md)が済んでいれば電源投入で自動的に起動する。
+[systemdの設定](../commands/README_SYSTEMD.md)が済んでいれば電源投入で自動的に起動する。
 
 * 開発用コンテナの起動
 
@@ -153,7 +153,7 @@ docker compose --env-file env.estimator up common -d
 docker compose --env-file env.mavlink up common -d
 ```
 
-[setup.sh](../systemd_files/setup.sh)では複数機対応するためnamespaceを指定する記述を追加している。
+[setup.sh](../commands/setup.sh)では複数機対応するためnamespaceを指定する記述を追加している。
 
 ### その他のDocker コマンド
 
@@ -256,7 +256,7 @@ docker container prune
 2'. realsense-ros2をbase imageにして拡張するdockerfileと、docker-compose上のserviceを追加
 3. buildし直す
 4. docker hubにアップロード
-5'. ros2_launch_sh のservice名を変更
+5'. project_launch_sh のservice名を変更
 6. HOST上でgit登録
 
 ###
@@ -267,6 +267,6 @@ docker container prune
   3.1 ROSパッケージを起動するコマンドを書いたlaunch_***.shを
       docker/common/ros_launcherに追加
   3.2 対応するenv.*** をdocker/内に追加
-  3.3 systemd_files/ros2_launch_shに3.1のファイルの起動を追加
+  3.3 commands/project_launch_shに3.1のファイルの起動を追加
 4. HOST上でgitに登録
-5. systemd_files/setup.sh を実行し自動起動の設定をする
+5. commands/setup.sh を実行し自動起動の設定をする
