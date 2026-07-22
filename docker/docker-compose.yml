@@ -57,7 +57,10 @@ services:
       - x86=$x86
       - HOST_PATH=$PATH
       - RMW_IMPLEMENTATION=rmw_${RMW:-fastrtps}_cpp
-      - FASTDDS_BUILTIN_TRANSPORTS=${FASTDDS_BUILTIN_TRANSPORTS:-UDPv4}
+      # max_msg_size を MTU 未満に制限し、大 latched メッセージ (/map ≈835KB 等) が
+      # IP フラグメントされて WSL2 で落ちるのを防ぐ (FASTRTPS_DEFAULT_PROFILES_FILE を
+      # 使わず builtin transport のみのコンテナ (例: nav2) 向け)。
+      - "FASTDDS_BUILTIN_TRANSPORTS=${FASTDDS_BUILTIN_TRANSPORTS:-UDPv4?max_msg_size=1400B&sockets_size=4MB}"
       - ROS_USE_SIM_TIME=${ROS_USE_SIM_TIME:-false}
       - ENV_BUILDING=${ENV_BUILDING:-bld10} # active 建屋名 (environment_<name>)
       # WSL : thanks to : https://dev.classmethod.jp/articles/wsl2-docker-gui-app-windows-display/
