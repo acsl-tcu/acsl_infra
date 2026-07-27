@@ -11,6 +11,10 @@ cd $ACSL_ROS2_DIR
 chmod -R a+x $ACSL_ROS2_DIR/commands/scripts
 chmod -R a+x $ACSL_ROS2_DIR/docker/common/scripts
 
+# bashrc は tracked な bashrc.base から生成する非追跡ファイル (ホスト固有 env を含む)。
+# 無ければ base から作る。以降の set_bashrc がこの生成物へマシン値を追記する。
+[[ -f $ACSL_ROS2_DIR/bashrc ]] || cp $ACSL_ROS2_DIR/bashrc.base $ACSL_ROS2_DIR/bashrc
+
 if [[ -z $(cat $ACSL_ROS2_DIR/bashrc | grep ORGPATH) ]]; then
   $ACSL_ROS2_DIR/commands/scripts/set_bashrc "export ORGPATH" $PATH
 else
