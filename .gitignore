@@ -2,6 +2,10 @@
 *project_launch*.sh
 *project_launch.service
 
+# bashrc は setup_bashrc が tracked な bashrc.base から生成する非追跡ファイル
+# (ホスト固有 PATH/ACSL_*_DIR/DISPLAY 等を含むため追跡しない)。base は追跡する。
+/bashrc
+
 ############ Custom
 # RID 日次確認スタンプ (setrid / dup が生成。ホスト固有なので管理外)
 .acsl/
