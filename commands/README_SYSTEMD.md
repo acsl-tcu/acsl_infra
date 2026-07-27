@@ -16,7 +16,7 @@ systemd を利用してHOST起動時にDocker コンテナ立ち上げからROS�
 git pullして来たら以下を実行
 
 ```bash
-./setup.sh
+./setup.sh <PROJECT>
 ```
 
 ## 拡張方法
