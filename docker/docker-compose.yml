@@ -61,6 +61,9 @@ services:
       # IP フラグメントされて WSL2 で落ちるのを防ぐ (FASTRTPS_DEFAULT_PROFILES_FILE を
       # 使わず builtin transport のみのコンテナ (例: nav2) 向け)。
       - "FASTDDS_BUILTIN_TRANSPORTS=${FASTDDS_BUILTIN_TRANSPORTS:-UDPv4?max_msg_size=1400B&sockets_size=4MB}"
+      # WSL2 監視PC で robot へ unicast discovery する FastDDS profile を渡す
+      # (discovery_env.sh が生成・export)。既定は空 = 未使用 (通常起動に影響なし)。
+      - FASTRTPS_DEFAULT_PROFILES_FILE=${FASTRTPS_DEFAULT_PROFILES_FILE:-}
       - ROS_USE_SIM_TIME=${ROS_USE_SIM_TIME:-false}
       - ENV_BUILDING=${ENV_BUILDING:-bld10} # active 建屋名 (environment_<name>)
       # WSL : thanks to : https://dev.classmethod.jp/articles/wsl2-docker-gui-app-windows-display/
