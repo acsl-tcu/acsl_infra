@@ -57,10 +57,15 @@ services:
       - x86=$x86
       - HOST_PATH=$PATH
       - RMW_IMPLEMENTATION=rmw_${RMW:-fastrtps}_cpp
-      # max_msg_size を MTU 未満に制限し、大 latched メッセージ (/map ≈835KB 等) が
-      # IP フラグメントされて WSL2 で落ちるのを防ぐ (FASTRTPS_DEFAULT_PROFILES_FILE を
-      # 使わず builtin transport のみのコンテナ (例: nav2) 向け)。
-      - "FASTDDS_BUILTIN_TRANSPORTS=${FASTDDS_BUILTIN_TRANSPORTS:-UDPv4?max_msg_size=1400B&sockets_size=4MB}"
+      # DDS 転送。既定は「上限なしの UDPv4」= native Linux ホスト向け。
+      # ローカルの大 latched メッセージ (/map ≈835KB 等) を同一ホストの別コンテナ
+      # (例: slam_toolbox の RViz) がそのまま受け取れる。
+      # 旧既定は max_msg_size=1400B で大メッセージを弾き、RViz が /map を受信できな
+      # かった (発見はできるがデータが来ない)。native Linux では不要な制限。
+      # robot 本体を WSL2 上で動かす場合のみ、IP フラグメント落ち対策として起動前に
+      #   export FASTDDS_BUILTIN_TRANSPORTS='UDPv4?max_msg_size=1400B&sockets_size=4MB'
+      # を明示する (監視 PC 側の受信設定は discovery_env.sh が別途生成する)。
+      - "FASTDDS_BUILTIN_TRANSPORTS=${FASTDDS_BUILTIN_TRANSPORTS:-UDPv4}"
       # WSL2 監視PC で robot へ unicast discovery する FastDDS profile を渡す
       # (discovery_env.sh が生成・export)。既定は空 = 未使用 (通常起動に影響なし)。
       - FASTRTPS_DEFAULT_PROFILES_FILE=${FASTRTPS_DEFAULT_PROFILES_FILE:-}
