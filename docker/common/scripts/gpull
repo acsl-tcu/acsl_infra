@@ -60,11 +60,20 @@ else
     mv ~/tttt ./bashrc
   fi
 
-  # clone済み環境リポジトリを更新
+  # clone済み環境リポジトリを更新 (プロジェクト内包型: 共有型への移行完了まで併存)
   for env_dir in $ACSL_WORK_DIR/environments/*/; do
     if [[ -d "${env_dir}.git" ]]; then
       echo "gpull environment: ${env_dir}"
       git -C "$env_dir" pull
+    fi
+  done
+
+  # ~/ENV/<name>/repo (ホスト共有の環境アセット) も更新
+  for env_repo in ${ACSL_ENV_DIR:-$HOME/ENV}/*/repo; do
+    if [[ -d "${env_repo}/.git" ]]; then
+      echo "gpull shared environment: ${env_repo}"
+      git -C "$env_repo" pull --ff-only \
+        || echo "gpull: WARNING pull failed (${env_repo}) — 手元の版を使用します"
     fi
   done
 fi

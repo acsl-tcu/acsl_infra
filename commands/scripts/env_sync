@@ -1,0 +1,45 @@
+#! /usr/bin/bash
+# env_sync [<name>...] : 環境リポジトリを ~/ENV/<name>/repo に共有デプロイ/更新する。
+#
+# 規約: ~/ENV = 「環境に関する共有アセット」(ホスト単位で全プロジェクト共有)
+#   ~/ENV/<name>/repo : environment_<name> の git checkout (本コマンドで配備)
+#   ~/ENV/<name>/omni : git 管理外の巨大資産 (USD 等、従来どおり手動配置)
+#
+# 使い方:
+#   env_sync bld10          # environment_bld10 を clone (既存なら pull)
+#   env_sync                # ~/ENV/*/repo を一括 pull
+#
+# 呼び出し元: 各プロジェクトの ./setup (初回配備)。更新は gpull が一括で行う。
+# オフライン等で pull に失敗した場合は警告して手元の版をそのまま使う。
+
+source $ACSL_ROS2_DIR/docker/common/scripts/super_echo 2>/dev/null
+
+ENV_ROOT="${ACSL_ENV_DIR:-$HOME/ENV}"
+
+sync_one() {
+  local name="$1"
+  local dst="$ENV_ROOT/$name/repo"
+  if [ -d "$dst/.git" ]; then
+    echo "env_sync: update $name ($dst)"
+    git -C "$dst" pull --ff-only \
+      || echo "env_sync: WARNING pull failed ($name) — 手元の版を使用します"
+  else
+    echo "env_sync: clone environment_$name -> $dst"
+    mkdir -p "$ENV_ROOT/$name"
+    git clone "git@github.com:acsl-tcu/environment_${name}.git" "$dst"
+  fi
+}
+
+if [ $# -eq 0 ]; then
+  shopt -s nullglob
+  found=0
+  for g in "$ENV_ROOT"/*/repo/.git; do
+    found=1
+    sync_one "$(basename "$(dirname "$(dirname "$g")")")"
+  done
+  [ $found -eq 0 ] && echo "env_sync: $ENV_ROOT に配備済み環境がありません (env_sync <name> で配備)"
+else
+  for n in "$@"; do
+    sync_one "$n"
+  done
+fi
