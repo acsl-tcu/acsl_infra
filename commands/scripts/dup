@@ -97,6 +97,10 @@ if [ -n "$ACSL_WORK_DIR" ] && [ ! -e "$ACSL_WORK_DIR/.env" ]; then
   touch "$ACSL_WORK_DIR/.env"
 fi
 
+# ~/ENV (環境共有アセット) も同様: 無いまま compose を起動すると Docker が
+# root 所有で自動生成し、以後 env_sync の clone が権限エラーになるため先に作る
+[ -d "$HOME/ENV" ] || mkdir -p "$HOME/ENV"
+
 # 呼び出し元シェルが持っていた RID と設定ファイル($ACSL_ROS2_DIR/bashrc)の RID が
 # 食い違っている場合に通知する。別端末で setrid した後など、手元シェルが古い RID の
 # まま取り残されているケースを検知する (dup 自体は常にファイル値で起動する)。

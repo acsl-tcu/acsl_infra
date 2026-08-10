@@ -94,6 +94,12 @@ services:
       # 占有格子は active 建屋の occupancy を /common/occupancy にも別名 bind
       # (launch_slam_toolbox.sh / launch_nav2.sh を無改修で建屋切替できるよう ENV_BUILDING で切替)
       - $ACSL_WORK_DIR/environments/${ENV_BUILDING:-bld10}/occupancy:/common/occupancy
+      # ~/ENV = 「環境に関する共有アセット」(ホスト単位で全プロジェクト共有)
+      #   ~/ENV/<name>/repo : environment_<name> の git checkout (env_sync で配備、gpull で更新)
+      #   ~/ENV/<name>/omni : git 管理外の巨大資産 (USD 等、従来どおり)
+      #   コンテナからは /ENV/<name>/... で参照 (isaac_sim の -v $HOME/ENV:/ENV と同一規約)。
+      #   上の $ACSL_WORK_DIR/environments (プロジェクト内包型) は共有型への移行完了まで併存
+      - ${HOME}/ENV:/ENV
       - /dev:/dev # GPIO and USB devices
       - vscode-server:/root/.vscode-server # VScode setting (preserve VScode extension)
       - $ACSL_WORK_DIR/packages:/root/ros2_ws/src/ros_packages
