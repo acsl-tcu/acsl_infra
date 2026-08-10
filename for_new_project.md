@@ -27,7 +27,7 @@ docker pull kasekiguchi/acsl-common:${IMAGE}
 PROJECT="<PROJECT>"
 cd ~/ros2/commands
 bash setup.sh "${PROJECT}"
-source ~/.bashrc
+source $ACSL_ROS2_DIR/bashrc
 ```
 
 起動確認（必要に応じて再起動）:

@@ -121,7 +121,7 @@ PROJECT="$PROJECT"
 # "$PROJECT" : drone, bos, bos_robot, whill, leg-wheel, rover, turtlebot
 cd ~/ros2/commands
 bash setup.sh $PROJECT
-source ~/.bashrc
+source $ACSL_ROS2_DIR/bashrc
 (sudo reboot )
 dps # 初回でdocker imageを取得できていない場合は表示されるようになるまで時間がかかる
 dlogs "$CONTAINER"
@@ -243,8 +243,8 @@ export PROJECT=whill
 export ROS_DOMAIN_ID=11
 ```
 2. bash setup.sh "$PROEJCT" <br>
-systemdへproject_launch_"$PROJECT"_shを登録。ROS_DOMAIN_ID, 関連コマンド群のパスを.bashrcに登録
-3. source ~/.bashrc <br>
+systemdへproject_launch_"$PROJECT"_shを登録。ROS_DOMAIN_ID, 関連コマンド群のパスを$ACSL_ROS2_DIR/bashrcに登録
+3. source $ACSL_ROS2_DIR/bashrc <br>
 4. vim dockerfiles/dockerfile."$EXT" (optional)<br>
 必要に応じてイメージを拡張するファイルを追加<br>
 5. dsbuild <br>
