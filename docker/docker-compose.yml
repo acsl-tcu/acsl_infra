@@ -84,21 +84,19 @@ services:
       - ${HOME}/.ssh:/root/.ssh
       - ./common:/common # common scripts
       - $ACSL_WORK_DIR/launcher:/common/ros_launcher
-      # 建屋 environment を 1 本の親マウントで全コンテナにライブ配送 (複数建屋対応)
-      #   ホスト $ACSL_WORK_DIR/environments/<name> → コンテナ /root/environment/<name>
-      #   environment は backend 非依存の共通資産なのでプロジェクト直下に置く
-      #   (SITL/HITL/実機すべての制御ランタイムが config/occupancy/maps を参照する)。
-      #   /root/environment/<name>/{config,occupancy,omni,...}
-      # rw: node_capture / save_map / serialize がコンテナから書く
-      - $ACSL_WORK_DIR/environments:/root/environment
-      # 占有格子は active 建屋の occupancy を /common/occupancy にも別名 bind
-      # (launch_slam_toolbox.sh / launch_nav2.sh を無改修で建屋切替できるよう ENV_BUILDING で切替)
-      - $ACSL_WORK_DIR/environments/${ENV_BUILDING:-bld10}/occupancy:/common/occupancy
       # ~/ENV = 「環境に関する共有アセット」(ホスト単位で全プロジェクト共有)
       #   ~/ENV/<name>/repo : environment_<name> の git checkout (env_sync で配備、gpull で更新)
       #   ~/ENV/<name>/omni : git 管理外の巨大資産 (USD 等、従来どおり)
       #   コンテナからは /ENV/<name>/... で参照 (isaac_sim の -v $HOME/ENV:/ENV と同一規約)。
-      #   上の $ACSL_WORK_DIR/environments (プロジェクト内包型) は共有型への移行完了まで併存
+      # rw: node_capture / save_map / serialize がコンテナから書く
+      #
+      # 建屋ごとのバインドマウント ($ACSL_WORK_DIR/environments... や
+      # .../${ENV_BUILDING}/occupancy) は廃止した。マウント元が存在しないと Docker が
+      # **root 所有で自動生成**するため、その建屋を使わないプロジェクトが dup しただけで
+      # 共有ツリーが root 所有で汚染され、以後 env_sync の clone が全プロジェクトで
+      # 失敗するリスクがあったため (実例: ~/drone/environments/bld10 が root 所有で生成された)。
+      # 旧来のパス (/root/environment/<name>) は entrypoint.sh が /ENV への symlink として
+      # 用意するので、コンテナ内の参照は従来どおり動く。
       - ${HOME}/ENV:/ENV
       - /dev:/dev # GPIO and USB devices
       - vscode-server:/root/.vscode-server # VScode setting (preserve VScode extension)

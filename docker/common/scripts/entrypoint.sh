@@ -38,6 +38,21 @@ if [[ -z $setuped ]]; then
 fi
 
 source /common/scripts/super_echo
+
+# 環境共有アセット (~/ENV -> /ENV) を旧来のパス規約でも参照できるようにする。
+#   /root/environment/<name> -> /ENV/<name>/repo
+# ホスト側 environments/ のバインドマウントを廃止したための互換レイヤ。
+# コンテナ内の symlink なのでホスト側には何も書かない (root 所有ディレクトリを作らない)。
+if [[ -d /ENV ]]; then
+  mkdir -p /root/environment
+  for _repo in /ENV/*/repo; do
+    [[ -d "$_repo" ]] || continue
+    _name=$(basename "$(dirname "$_repo")")
+    ln -sfn "$_repo" "/root/environment/${_name}"
+  done
+  unset _repo _name
+fi
+
 recho ROS_DOMAIN_ID : $ROS_DOMAIN_ID
 export PATH=/common/scripts:${PATH}
 source /opt/ros/${ROS_DISTRO}/setup.bash
