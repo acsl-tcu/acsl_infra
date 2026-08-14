@@ -5,6 +5,8 @@
 #   disaac sdg      : Actor SDG kit
 #   disaac newton   : Newton 物理エンジン kit (Isaac Sim 6.0, experimental)
 # Env: ISAAC_SIM_IMAGE / ISAAC_SIM_LAUNCH で上書き可
+# 注意: isaac-sim6 イメージは HOME=/root。キャッシュ/ログの永続化マウントは /root 側に張ること
+# (旧イメージの /isaac-sim/.cache 等に張ると空振りし、毎回シェーダ再コンパイルで起動が数分停まる)。
 #export DISPLAY=:0
 xhost +local: > /dev/null 2>&1
 
@@ -53,12 +55,12 @@ docker run --name isaac-sim --entrypoint bash -it --ipc=host --gpus all --rm --n
     -v $HOME/ENV:/ENV \
     -v "${WORK_DIR}":/workspace \
     -v "${WORK_DIR}/isaac_sim/notebooks":/isaac-sim/exts/isaacsim.code_editor.jupyter/data/notebooks:rw \
-    -v $HOME/.Xauthority:/isaac-sim/.Xauthority \
-    -v ~/docker/isaac-sim/cache/main:/isaac-sim/.cache:rw \
-    -v ~/docker/isaac-sim/cache/computecache:/isaac-sim/.nv/ComputeCache:rw \
-    -v ~/docker/isaac-sim/logs:/isaac-sim/.nvidia-omniverse/logs:rw \
-    -v ~/docker/isaac-sim/config:/isaac-sim/.nvidia-omniverse/config:rw \
-    -v ~/docker/isaac-sim/data:/isaac-sim/.local/share/ov/data:rw \
-    -v ~/docker/isaac-sim/pkg:/isaac-sim/.local/share/ov/pkg:rw \
+    -v $HOME/.Xauthority:/root/.Xauthority \
+    -v ~/docker/isaac-sim/cache/main:/root/.cache:rw \
+    -v ~/docker/isaac-sim/cache/computecache:/root/.nv/ComputeCache:rw \
+    -v ~/docker/isaac-sim/logs:/root/.nvidia-omniverse/logs:rw \
+    -v ~/docker/isaac-sim/config:/root/.nvidia-omniverse/config:rw \
+    -v ~/docker/isaac-sim/data:/root/.local/share/ov/data:rw \
+    -v ~/docker/isaac-sim/pkg:/root/.local/share/ov/pkg:rw \
     "${IMAGE}" \
     -c "source /opt/ros/jazzy/setup.bash 2>/dev/null; ${LAUNCH_CMD}"
