@@ -50,7 +50,6 @@ setup後、新しいプロジェクトを作成する場合は[開発の仕方](
 |- packages/              : ROS packages
 |- dockerfiles/           : dockerfile to build image
 |- docker/                : commands and setting for DOCKER container
-ダ
 |- hardware_setup       : documents for hardware setup
 |- rules                : udev rules
 |- .gitignore           : git管理から除外するファイルの設定
@@ -160,7 +159,7 @@ dstop all # すべてのコンテナ停止
 
 # = docker compose up common -d + hostnameの設定
 dup <container_name>
-dup all # commands/project_launch.sh を実行
+dup all # プロジェクト直下の project_launch.sh ($ACSL_WORK_DIR/project_launch.sh) を実行
 # = docker compose exec common bash
 din <container_name>
 # コンテナ内で表示される中身についての表示（末尾１０行を継続表示）
@@ -252,17 +251,17 @@ image_"$PROJECT" タグのdocker image作成<br>
 4を行った場合は多段処理でimageを作るのでdsbuild のヘルプを参照
 6. dupin dev<br>
 ROS2パッケージ開発用コンテナを立ち上げ、コンテナ内のターミナルにattach
-7. /root/project_ws/src/ros_packages/> ros2 pkg create "$PACKAGE" ... <br>
+7. /root/ros2_ws/src/ros_packages/> ros2 pkg create "$PACKAGE" ... <br>
 自作パッケージの開発＋デバック<br>
 ```bash
-dev> cd /root/project_ws/src/ros_packages/
+dev> cd /root/ros2_ws/src/ros_packages/
 dev> ros2 pkg create "$PACKAGE" --node-name <node_name> --build-type ament_python --dependencies rclpy std_msgs sensor_msgs --maintainer-email ksekiguc@tcu.ac.jp --maintainer-name Kazuma SEKIGUCHI
 #maintainerなどは適宜修正する。
 dev> rbuild "$PACKAGE" # 自作パッケージのbuild 
 # 詳細なデバックをする場合はVSCodeでアタッチしてデバックする。
 ```
-container内の /root/project_ws/src/ros_packages/にパッケージ追加<br>
-/root/project_ws/src/ros_packages/ は　packages と同期されている。<br>
+container内の /root/ros2_ws/src/ros_packages/にパッケージ追加<br>
+/root/ros2_ws/src/ros_packages/ は　packages と同期されている。<br>
 動作するようになったら以下のファイルを追加する。<br>
 - launcher/launch_"$CONTAINER".sh
 - "$PROJECT".rules (optional)
