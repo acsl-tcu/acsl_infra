@@ -2,7 +2,8 @@
 # env_sync [<name>...] : 環境リポジトリを ~/ENV/<name>/repo に共有デプロイ/更新する。
 #
 # 規約: ~/ENV = 「環境に関する共有アセット」(ホスト単位で全プロジェクト共有)
-#   ~/ENV/<name>/repo : environment_<name> の git checkout (本コマンドで配備)
+#   ~/ENV/<name>/repo : environment_<name> または robot_<name> の git checkout
+#                       (機体も環境の一つ。建屋と機体を同じ名前空間で並置する)
 #   ~/ENV/<name>/omni : git 管理外の巨大資産 (USD 等、従来どおり手動配置)
 #
 # 使い方:
@@ -24,9 +25,23 @@ sync_one() {
     git -C "$dst" pull --ff-only \
       || echo "env_sync: WARNING pull failed ($name) — 手元の版を使用します"
   else
-    echo "env_sync: clone environment_$name -> $dst"
     mkdir -p "$ENV_ROOT/$name"
-    git clone "git@github.com:acsl-tcu/environment_${name}.git" "$dst"
+    # 建屋 (environment_<name>) と機体 (robot_<name>) の両対応。
+    # 既存 checkout の pull は origin をそのまま使うので命名に依存しない。
+    local repo=""
+    local cand
+    for cand in "environment_${name}" "robot_${name}"; do
+      if git ls-remote "git@github.com:acsl-tcu/${cand}.git" >/dev/null 2>&1; then
+        repo="$cand"
+        break
+      fi
+    done
+    if [ -z "$repo" ]; then
+      echo "env_sync: ERROR acsl-tcu に environment_${name} も robot_${name} も見つかりません"
+      return 1
+    fi
+    echo "env_sync: clone $repo -> $dst"
+    git clone "git@github.com:acsl-tcu/${repo}.git" "$dst"
   fi
 }
 
