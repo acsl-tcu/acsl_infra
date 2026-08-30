@@ -51,5 +51,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         ros-jazzy-rmw-fastrtps-cpp \
     && rm -rf /var/lib/apt/lists/*
 
+# 四脚 (legged) ロボットの ONNX ポリシー実行用 (RBQ-10 rbq10_trot 等)。
+# kit python の site-packages へ導入 — legged_bridge (project_rf_rover) が
+# import onnxruntime する。CPU 版で十分 (130-obs MLP を 100Hz 実行する程度)
+RUN /isaac-sim/kit/python/bin/python3 -m pip install --no-cache-dir onnxruntime
+
 WORKDIR /isaac-sim
 ENTRYPOINT ["/bin/bash"]
