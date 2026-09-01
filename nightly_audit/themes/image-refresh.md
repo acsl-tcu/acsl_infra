@@ -16,6 +16,8 @@
 ## 実行上の注意
 - allow は**前綴一致**。パイプ・リダイレクト・`2>&1`・env 前置 (`ROS_DISTRO=... dbuild`) を
   付けると不一致で deny される。**各コマンドは素の1コマンドで打つ**こと。
+- **環境変数 (`$ACSL_ROS2_DIR` 等) を含むコマンド文字列も deny される** (permission
+  マッチャは `$VAR` 入りを不一致扱い)。パスは必ず絶対パスに展開した形で打つ。
 - ビルドは 30〜60 分かかる。Bash の timeout はハーネスが 90 分に引き上げ済みなので
   待てばよい (分割・バックグラウンド化・迂回をしない)。
 - `Permission denied` (rc=126) は許可 deny ではなく実行ビット欠け。ハーネス側の欠陥として
@@ -32,8 +34,8 @@
    - `docker images kasekiguchi/acsl-common:jazzy_x86` — 現行の IMAGE ID と CREATED を記録。
 2. **上流を更新**: `docker pull ros:jazzy` — digest が変わったか出力から記録
    (Image is up to date でもビルドは続行する。apt レベルの更新はベース digest に現れない)。
-3. **再ビルド**:
-   `dbuild ros:jazzy jazzy $ACSL_ROS2_DIR/dockerfiles/dockerfile.base_ros_x86 --no-cache`
+3. **再ビルド**: harness がプロンプト末尾に注入した**絶対パス展開済み**の
+   `dbuild ros:jazzy jazzy /.../dockerfiles/dockerfile.base_ros_x86 --no-cache` をそのまま打つ。
    - `--no-cache` は必須 (キャッシュが残ると apt update/upgrade 層が古いまま再利用される)。
    - 失敗したら push せず、エラー末尾を添えて要相談。旧タグはそのまま残るので実害なし。
 4. **検証** (push 前に必ず):

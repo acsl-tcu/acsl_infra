@@ -13,6 +13,7 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+INFRA_DIR="$(cd "$HERE/.." && pwd)"   # この監査が動く acsl_infra checkout
 THEMES_DIR="$HERE/themes"
 LOG_DIR="$HERE/logs"
 ROTATION="$HERE/rotation.txt"
@@ -34,7 +35,7 @@ sync_targets() {
     git -C "$path" fetch origin --quiet 2>>"$logf" || { echo "[sync] $path: fetch 失敗" | tee -a "$logf"; continue; }
     local cur dirty
     cur="$(git -C "$path" symbolic-ref --short HEAD 2>/dev/null || echo DETACHED)"
-    dirty="$(git -C "$path" status --porcelain)"
+    dirty="$(git -C "$path" status --porcelain --untracked-files=no)"   # 未追跡は ff を妨げない
     if [[ "$cur" == "main" && -z "$dirty" ]]; then
       git -C "$path" pull --ff-only origin main --quiet 2>>"$logf" \
         && echo "[sync] $path: main を ff pull" | tee -a "$logf" \
@@ -288,6 +289,16 @@ $(if [[ -n "$SMOKE_DEPLOY" ]]; then cat <<SMOKE
 ============================================================
 SMOKE
 fi)
+$(if [[ "$THEME" == "image-refresh" ]]; then cat <<IMG
+
+============================================================
+今夜の image-refresh 用コマンド (harness が絶対パスに展開済み):
+  dbuild ros:jazzy jazzy ${INFRA_DIR}/dockerfiles/dockerfile.base_ros_x86 --no-cache
+★ この文字列を一字一句そのまま打つこと。\$ACSL_ROS2_DIR 等の環境変数を含む形で打つと
+  permission 不一致で deny される (2026-07-27〜08-29 の 6 晩がこれで空振り)。
+============================================================
+IMG
+fi)
 
 ============================================================
 実行日: ${DATE} / ホスト: $(hostname)
@@ -371,7 +382,6 @@ fi
 # 必要。dontAsk では env 前置コマンド (ROS_DISTRO=... dbuild) が deny されるため、
 # ここで export して Bash tool に継承させる。checkout は監査が動くこのリポ自身を使う。
 if [[ "$THEME" == "image-refresh" ]]; then
-  INFRA_DIR="$(cd "$HERE/.." && pwd)"
   export ACSL_ROS2_DIR="$INFRA_DIR"
   export ROS_DISTRO="jazzy"
   export PATH="$INFRA_DIR/commands/scripts:$INFRA_DIR/docker/common/scripts:$PATH"
