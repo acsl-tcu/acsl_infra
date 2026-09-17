@@ -150,6 +150,8 @@ commands/scripts 内の便利コマンド (gpull のみ docker/common/scripts)
 
 ```bash
 # = git pull + commitしていない編集の削除 + 権限関係の整理
+# 併せて配備済みの環境リポ (~/ENV/<name>/repo) を並列 pull する。
+# 出力は更新/失敗があったものだけ。本数は ENV_PULL_JOBS (既定 8) で変更可
 gpull
 # = docker ps -a
 dps
