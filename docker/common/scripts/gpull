@@ -2,6 +2,24 @@
 
 source $ACSL_ROS2_DIR/docker/common/scripts/super_echo 2>/dev/null
 
+# 環境リポジトリ 1 本を静かに pull する (xargs の並列ワーカとして呼ばれる)。
+# 出力するのは「更新があった」「失敗した」場合のみ。更新判定は HEAD の前後比較で
+# 行う (git のメッセージ文言はロケールで変わるため、文字列一致に頼らない)。
+_gpull_env_repo() {
+  local d="$1" before after out
+  before=$(git -C "$d" rev-parse HEAD 2>/dev/null)
+  if out=$(git -C "$d" pull --ff-only 2>&1); then
+    after=$(git -C "$d" rev-parse HEAD 2>/dev/null)
+    if [[ "$before" != "$after" ]]; then
+      echo "gpull: updated ${d} (${before:0:7}..${after:0:7})"
+    fi
+  else
+    echo "gpull: WARNING pull failed (${d}) — 手元の版を使用します"
+    printf '%s\n' "$out" | sed 's/^/    /'
+  fi
+}
+export -f _gpull_env_repo
+
 if [ ${HOSTNAME:0:1} == "D" ]; then
   # docker container 内の場合
   if [[ "$1" == "common" ]]; then
@@ -60,20 +78,41 @@ else
     mv ~/tttt ./bashrc
   fi
 
-  # clone済み環境リポジトリを更新 (プロジェクト内包型: 共有型への移行完了まで併存)
-  for env_dir in $ACSL_WORK_DIR/environments/*/; do
-    if [[ -d "${env_dir}.git" ]]; then
-      echo "gpull environment: ${env_dir}"
-      git -C "$env_dir" pull
-    fi
-  done
+  # --- 環境リポジトリの更新 ---
+  # 対象は「そのホストに配備済みのもの全部」。~/ENV はホスト単位の共有アセットで、
+  # どの project がどれを使うかは gpull からは判らないため選別しない
+  # (「版は固定しない・常に最新運用」= ワークスペース CLAUDE.md の ~/ENV 規約)。
+  # 必要な集合を宣言しているのは各 project の setup の ENVIRONMENTS/ROBOTS 配列。
+  #
+  # 1 リポあたり SSH 往復 ~2 秒で、13 リポ直列では確認だけで ~26 秒かかっていたので
+  # 並列化する (ENV_PULL_JOBS で本数を変更可)。出力は差分のみ (既に最新なら黙る)。
+  shopt -s nullglob
+  declare -A _env_seen=()
+  _env_repos=()
+  _add_env_repo() {
+    local d="$1" key
+    [[ -d "$d/.git" ]] || return 0
+    key=$(realpath "$d" 2>/dev/null) || key="$d"
+    # environments/<name> は ~/ENV/<name>/repo への symlink なので、実体パスで
+    # 重複排除しないと同じリポを 2 回 pull することになる
+    [[ -n "${_env_seen[$key]:-}" ]] && return 0
+    _env_seen[$key]=1
+    _env_repos+=("$key")
+  }
+  # プロジェクト内包型 (旧方式) の残り。共有型への移行完了まで併存
+  for env_dir in $ACSL_WORK_DIR/environments/*/; do _add_env_repo "${env_dir%/}"; done
+  # ~/ENV/<name>/repo (ホスト共有の環境アセット)
+  for env_repo in ${ACSL_ENV_DIR:-$HOME/ENV}/*/repo; do _add_env_repo "$env_repo"; done
 
-  # ~/ENV/<name>/repo (ホスト共有の環境アセット) も更新
-  for env_repo in ${ACSL_ENV_DIR:-$HOME/ENV}/*/repo; do
-    if [[ -d "${env_repo}/.git" ]]; then
-      echo "gpull shared environment: ${env_repo}"
-      git -C "$env_repo" pull --ff-only \
-        || echo "gpull: WARNING pull failed (${env_repo}) — 手元の版を使用します"
-    fi
-  done
+  if [[ ${#_env_repos[@]} -gt 0 ]]; then
+    _env_log=$(mktemp)
+    printf '%s\0' "${_env_repos[@]}" \
+      | xargs -0 -P "${ENV_PULL_JOBS:-8}" -I{} bash -c '_gpull_env_repo "$@"' _ {} \
+        >"$_env_log" 2>&1
+    cat "$_env_log"
+    _env_upd=$(grep -c '^gpull: updated ' "$_env_log")
+    _env_err=$(grep -c '^gpull: WARNING ' "$_env_log")
+    echo "gpull: 環境リポ ${#_env_repos[@]} 件を確認 (更新 ${_env_upd}, 失敗 ${_env_err})"
+    rm -f "$_env_log"
+  fi
 fi
