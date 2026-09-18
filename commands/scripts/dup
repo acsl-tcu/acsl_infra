@@ -65,7 +65,19 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
   exit 0
 fi
 if [[ "$1" =~ ^--image= ]]; then
-  OPT=$(echo $1 | sed -e 's/^--image=//')
+  OPT=${1#--image=}
+  # ★タグだけ (speech_recognition_x86) でも、リポジトリ込み
+  #   (kasekiguchi/acsl-common:speech_recognition_x86) でも受け付ける。
+  #   docker-compose.yml は image: kasekiguchi/acsl-common:${TAG} を組み立てるので
+  #   **タグだけ**に正規化する必要がある (dcommit も ${ETAG##*:} で同じことをしている)。
+  #
+  #   正規化しないと下の存在確認が
+  #     docker images kasekiguchi/acsl-common:kasekiguchi/acsl-common:speech_recognition_x86
+  #   という不正な参照になり、イメージが「無い」と誤判定されて
+  #   image_${PROJECT} へ黙ってフォールバックしていた。
+  #   build_project --image=<repo>:<tag> がこれを踏み、指定したイメージに
+  #   入れておいたパッケージが引き継がれない実害が出ていた (2026-09-18)。
+  OPT=${OPT##*:}
   shift
 fi
 compose=" -f ${ACSL_ROS2_DIR}/docker/docker-compose.yml "
@@ -168,8 +180,11 @@ if [ $# -ge 1 ]; then
     else
       cimage=${TAG%%_x86*}${x86} # image candidate
     fi
-    exist_image=$(docker images kasekiguchi/acsl-common:${cimage} | grep ${cimage})
-    echo "Search image: ${cimage}         Found: $exist_image "
+    # ★docker images -q は参照が存在すれば image ID を、無ければ空を返す。
+    #   `docker images <ref> | grep <ref>` は ref に : や / が入ると壊れ、
+    #   かつ部分一致で別タグを拾いうる。
+    exist_image=$(docker images -q "kasekiguchi/acsl-common:${cimage}")
+    echo "Search image: ${cimage}         Found: ${exist_image:-(none)} "
     if [[ -z $exist_image ]]; then
       # Auto-build: dockerfile.<name> があれば自動ビルド (DUP_NO_AUTOBUILD=1 で無効化)
       # name は cimage から _x86 を剥がしたもの (例: cimage=ardupilot_sitl_x86 → ardupilot_sitl)
@@ -196,7 +211,7 @@ if [ $# -ge 1 ]; then
             -f "$df_path" \
             "$(dirname "$df_path")"
           if [[ $? -eq 0 ]]; then
-            exist_image=$(docker images kasekiguchi/acsl-common:${cimage} | grep ${cimage})
+            exist_image=$(docker images -q "kasekiguchi/acsl-common:${cimage}")
           else
             echo "== auto-build failed for ${cimage}"
           fi
@@ -204,7 +219,7 @@ if [ $# -ge 1 ]; then
       fi
       # 既存フォールバック: auto-build できなかった場合は base/image_<PROJECT> を使う
       if [[ -z $exist_image ]]; then
-        exist_image=$(docker images kasekiguchi/acsl-common | grep image_${PROJECT}${x86})
+        exist_image=$(docker images -q "kasekiguchi/acsl-common:image_${PROJECT}${x86}")
         if [[ -z $exist_image ]]; then
           TAG=base${x86}
         else

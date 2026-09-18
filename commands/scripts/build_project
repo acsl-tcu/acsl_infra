@@ -5,14 +5,26 @@
 # $@ : build target packages
 # build_project ros_packages
 # build_project --image=image_name ros_packages
+#
+# --image= は次のどちらでも受け付ける:
+#   --image=speech_recognition_x86
+#   --image=kasekiguchi/acsl-common:speech_recognition_x86
 
 if [[ "$1" =~ ^--image= ]]; then
-  IMAGE=$(echo $1 | sed -e 's/^--image=//')
+  IMAGE=${1#--image=}
   shift
 else
-  TAG=image_${PROJECT}${x86}
-  IMAGE=kasekiguchi/acsl-common:${TAG}
+  IMAGE=image_${PROJECT}${x86}
 fi
+# ★2 つの形に正規化して使い分ける。
+#   TAG   : docker-compose.yml が組み立てる image: kasekiguchi/acsl-common:${TAG}
+#           に渡す値。dup --image= はこちらを期待している。
+#   IMAGE : docker images / dcommit に渡す完全な参照。
+#   以前は受け取った文字列をそのまま dup へ渡していたため、リポジトリ込みで
+#   指定すると dup 側の存在確認が壊れ、image_${PROJECT} へ黙って
+#   フォールバックしていた (指定イメージの中身が引き継がれない)。
+TAG=${IMAGE##*:}
+IMAGE=kasekiguchi/acsl-common:${TAG}
 
 source $ACSL_ROS2_DIR/docker/common/scripts/super_echo
 if [ $# -ge 1 ]; then
@@ -27,11 +39,11 @@ gecho "BUILD_PROJECT: build own ros packages on ${IMAGE}"
 cp ${ACSL_ROS2_DIR}/launcher/launch_build.sh ${ACSL_WORK_DIR}/launcher/
 chmod a+x ${ACSL_WORK_DIR}/launcher/launch_build.sh
 
-exist_image=$(docker images ${IMAGE} | grep ${IMAGE%%:*})
+exist_image=$(docker images -q "${IMAGE}")
 if [[ -z $exist_image ]]; then
   recho "create ${IMAGE} image first by dbuild"
 else
-  dup --image=${IMAGE} build $packs
+  dup --image=${TAG} build $packs
   # acsl-common:$TAG を build コンテナとしてcommon サービスで起動
   # 中で　launch_build.sh　を実行し自作パッケージをcolcon buildする
   packs_list=($packs)
