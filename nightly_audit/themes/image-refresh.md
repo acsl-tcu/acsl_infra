@@ -51,9 +51,11 @@
   push 成否、prune で回収した容量。
 - 派生イメージ (image_* 等) は**このテーマ (claude) では再ビルドしない**。ベース更新が
   成功した晩は、テーマ終了後に **harness が `derived_images.conf` の連鎖を自動再ビルド**し、
-  昇格台帳 (state/) をリセットする。以降の backend-smoke が全 mode PASS した deploy の
-  派生イメージが正式イメージとして dpush される。レポートには「派生再ビルドは harness が
-  実施 (run.log 参照)」と記載すればよい。
+  昇格台帳 (state/) をリセットする。以降の backend-smoke が全 mode PASS した deploy は
+  「昇格 (検証済み)」になる (派生イメージの dpush はしない方針。展開は各ホストの
+  `gpull common`)。Hub へ push するのは本テーマの base jazzy_x86 のみ (setup full の
+  dpull が参照する)。レポートには「派生再ビルドは harness が実施 (run.log 参照)」と
+  記載すればよい。
 
 ## やらないこと (安全境界・絶対)
 - `jazzy_x86` 以外のタグを push しない (image_*, isaac 系, humble, arm 無印を含む)。

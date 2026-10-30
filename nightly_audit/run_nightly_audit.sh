@@ -57,13 +57,15 @@ sync_targets() {
 # 基幹 (jazzy_x86) が更新された晩 (image-refresh) に derived_images.conf の連鎖を
 # 機械的に再ビルドし、昇格台帳 (state/) をリセットする。以降の backend-smoke が
 # レポート末尾の `SMOKE_RESULT: PASS` を積み、deploy の全許可 mode が現 base 由来で
-# PASS した時点でその deploy の派生イメージ群を dpush = 「正式イメージ」とする。
+# PASS した時点でその deploy を「昇格 (検証済み)」とする。派生イメージは Hub へ
+# dpush しない (2026-10 方針): 配布はソース + 各ホストの `gpull common` (= pull +
+# setup full のローカル再ビルド)。Hub に push するのは base jazzy_x86 のみ
+# (setup full の dpull が参照するため。image-refresh テーマが担当)。
 # 機械的な工程は claude に任せずすべてここ (harness) で行う。
 STATE_DIR="$HERE/state"
 DERIVED_CONF="$HERE/derived_images.conf"
 BASE_TAG="kasekiguchi/acsl-common:jazzy_x86"
 DBUILD="$HERE/../commands/scripts/dbuild"
-DPUSH="$HERE/../commands/scripts/dpush"
 
 current_base_id() { docker images -q "$BASE_TAG" 2>/dev/null | head -1; }
 
@@ -137,27 +139,12 @@ record_smoke_and_promote() {
   done
   if [[ -n "$missing" ]]; then
     echo "[promote] $SMOKE_DEPLOY: 未 PASS mode (${missing% }) → 昇格待ち" | tee -a "$logf"
-    { echo; echo "---"; echo "**昇格台帳**: base \`$base_id\` — 残り mode: ${missing% } (全 PASS で正式イメージ dpush)"; } >> "$report"
+    { echo; echo "---"; echo "**昇格台帳**: base \`$base_id\` — 残り mode: ${missing% } (全 PASS で昇格 = gpull common 展開可)"; } >> "$report"
     return 0
   fi
-  echo "[promote] $SMOKE_DEPLOY: 全 mode ($modes_csv) PASS → 正式イメージとして dpush 開始" | tee -a "$logf"
-  local dep itag otag df pushed="" pfail=0
-  while IFS='|' read -r dep itag otag df; do
-    dep="$(echo "$dep" | xargs)"; otag="$(echo "$otag" | xargs)"
-    [[ "$dep" == "$SMOKE_DEPLOY" ]] || continue
-    if "$DPUSH" "$otag" >>"$logf" 2>&1; then
-      pushed+="$otag "
-    else
-      echo "[promote] dpush $otag 失敗" | tee -a "$logf"; pfail=1
-    fi
-  done < <(grep -vE '^[[:space:]]*(#|$)' "$DERIVED_CONF")
-  if [[ "$pfail" == 0 && -n "$pushed" ]]; then
-    echo "$base_id $DATE" > "$STATE_DIR/promoted-$SMOKE_DEPLOY"
-    echo "[promote] $SMOKE_DEPLOY 昇格完了: ${pushed% }" | tee -a "$logf"
-    { echo; echo "---"; echo "**🎖 正式イメージ昇格**: $SMOKE_DEPLOY の全 mode ($modes_csv) が base \`$base_id\` 由来で PASS。dpush 済み: ${pushed% }"; } >> "$report"
-  else
-    { echo; echo "---"; echo "**要相談**: $SMOKE_DEPLOY は全 mode PASS だが dpush に失敗あり (成功: ${pushed:-なし})。ログ: $logf"; } >> "$report"
-  fi
+  echo "$base_id $DATE" > "$STATE_DIR/promoted-$SMOKE_DEPLOY"
+  echo "[promote] $SMOKE_DEPLOY 昇格: 全 mode ($modes_csv) が base=$base_id で PASS (dpush はしない方針)" | tee -a "$logf"
+  { echo; echo "---"; echo "**🎖 昇格**: $SMOKE_DEPLOY の全 mode ($modes_csv) が base \`$base_id\` 由来で PASS。派生イメージは Hub へ push しない方針 — 各ホストは \`gpull common\` で取り込む (pull + setup full のローカル再ビルド)"; } >> "$report"
 }
 
 # --- Slack 通知 (任意) ------------------------------------------------------

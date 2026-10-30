@@ -68,8 +68,9 @@ docker logs --tail 100 <container>           # ★ dlogs は使わない (follow
 - `SMOKE_RESULT: FAIL`    … 再現する起動失敗があった (指摘として記載したもの)
 - `SMOKE_RESULT: BLOCKED` … ホスト使用中・環境ギャップ等で検証自体を実施できなかった
 harness がこの行を読んで昇格台帳 (`state/`) を更新し、deploy の全許可 mode が
-現 base 由来で PASS すると派生イメージ群が dpush = 正式イメージになる。
-**迷ったら PASS にしない** (誤 PASS は壊れた正式イメージの配布につながる)。
+現 base 由来で PASS すると「昇格 (検証済み)」になる (派生イメージの dpush はしない方針。
+各ホストへの展開は `gpull common` のローカル再ビルド)。
+**迷ったら PASS にしない** (誤 PASS は壊れた版の「検証済み」宣言につながる)。
 
 ## 検証方法
 - 失敗 → 修正 → **同じ `dup` シーケンスで 2 回**通ることを確認してから draft PR。
