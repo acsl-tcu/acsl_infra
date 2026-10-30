@@ -127,6 +127,7 @@ record_smoke_and_promote() {
   modes_csv="$(deploy_field "$SMOKE_DEPLOY" 5 | tr -d ' ')"
   IFS=',' read -ra _MODES <<< "$modes_csv"
   for m in "${_MODES[@]}"; do
+    [[ "$m" == \** ]] && continue   # "*" 付き mode は昇格要件外 (smoke は従来どおり回る)
     [[ "$(awk '{print $1}' "$STATE_DIR/smoke-pass-${SMOKE_DEPLOY}-${m}" 2>/dev/null)" == "$base_id" ]] || missing+="$m "
   done
   if [[ -n "$missing" ]]; then
@@ -242,7 +243,8 @@ if [[ "$THEME" == backend-smoke-*-* ]]; then
   [[ -n "$SMOKE_PATH" ]] || { echo "backend-smoke: deploy '$SMOKE_DEPLOY' が targets.conf に無い"; exit 1; }
   # ★安全: mode が targets.conf の許可リストに無ければ実行しない (EXP 混入を弾く)
   IFS=',' read -ra MODES <<< "$(echo "${SMOKE_MODES_CSV:-}" | tr -d ' ')"
-  ok=0; for m in "${MODES[@]}"; do [[ "$m" == "$SMOKE_MODE" ]] && ok=1; done
+  # 先頭 "*" の mode は「smoke は回すが正式イメージ昇格の要件に数えない」(例: *SITL_OMNI は GUI 前提で無人 PASS 不能)
+  ok=0; for m in "${MODES[@]}"; do [[ "${m#\*}" == "$SMOKE_MODE" ]] && ok=1; done
   [[ "$ok" == 1 ]] || { echo "backend-smoke: mode '$SMOKE_MODE' は $SMOKE_DEPLOY の許可 modes ($SMOKE_MODES_CSV) に無い。安全のため中止。"; exit 1; }
 elif [[ "$THEME" == backend-smoke-* ]]; then
   echo "backend-smoke は 'backend-smoke-<deploy>-<mode>' 形式で指定する (例: backend-smoke-drone-SIM)。1 backend=1晩。"; exit 1
