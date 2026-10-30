@@ -37,9 +37,14 @@ sync_targets() {
     cur="$(git -C "$path" symbolic-ref --short HEAD 2>/dev/null || echo DETACHED)"
     dirty="$(git -C "$path" status --porcelain --untracked-files=no)"   # 未追跡は ff を妨げない
     if [[ "$cur" == "main" && -z "$dirty" ]]; then
-      git -C "$path" pull --ff-only origin main --quiet 2>>"$logf" \
-        && echo "[sync] $path: main を ff pull" | tee -a "$logf" \
-        || echo "[sync] $path: ff pull 不可 (要手動)" | tee -a "$logf"
+      if git -C "$path" pull --ff-only origin main --quiet 2>>"$logf"; then
+        echo "[sync] $path: main を ff pull" | tee -a "$logf"
+        # pull は submodule を更新しない。新規登録 (px4_msgs 等) も取れるよう --init で同期。
+        git -C "$path" submodule update --init --recursive --quiet 2>>"$logf" \
+          || echo "[sync] $path: submodule 更新失敗 (要手動)" | tee -a "$logf"
+      else
+        echo "[sync] $path: ff pull 不可 (要手動)" | tee -a "$logf"
+      fi
     elif git -C "$path" fetch origin main:main --quiet 2>>"$logf"; then
       echo "[sync] $path: local main を ff 更新 (作業ブランチ=$cur は不変)" | tee -a "$logf"
     else
