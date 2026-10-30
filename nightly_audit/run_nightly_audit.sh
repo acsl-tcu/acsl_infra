@@ -101,6 +101,25 @@ rebuild_derived_images() {
       echo "[derived] $dep: $otag 失敗" | tee -a "$logf"; fail=1
     fi
   done < <(grep -vE '^[[:space:]]*(#|$)' "$DERIVED_CONF")
+  # dockerfile の dbuild だけでは自作パッケージ (px4_msgs / drone2 / rf_rover 等) の colcon
+  # 成果物がイメージに入らない (焼くのは build_project → dcommit)。dup も launch も
+  # 既存 install を source するだけなので、ここで各 deploy の ./setup (引数なし =
+  # submodule 取得 + build_project) を回して workspace をイメージへ焼き直す。
+  # パッケージ一覧の正本は各リポの setup に置いたまま (harness に重複させない)。
+  # bashrc は ACSL_ROS2_DIR さえあれば自己完結 (PROJECT/x86/PATH を export する)。
+  if [[ "$fail" == 0 ]]; then
+    local sdep spath
+    for sdep in $(grep -vE '^[[:space:]]*(#|$)' "$DERIVED_CONF" | awk -F'|' '{gsub(/[ \t]/,"",$1); print $1}' | sort -u); do
+      spath="$(deploy_field "$sdep" 3)"; spath="${spath/#\~/$HOME}"
+      [[ -x "$spath/setup" ]] || { echo "[derived] $sdep: $spath/setup 無し skip" | tee -a "$logf"; continue; }
+      echo "[derived] $sdep: ./setup (build_project で workspace をイメージへ焼込)" | tee -a "$logf"
+      if (cd "$spath" && env ACSL_ROS2_DIR="$spath/.acsl" ./setup >>"$logf" 2>&1); then
+        echo "[derived] $sdep: setup OK" | tee -a "$logf"
+      else
+        echo "[derived] $sdep: setup 失敗" | tee -a "$logf"; fail=1
+      fi
+    done
+  fi
   if [[ "$fail" == 0 ]]; then
     echo "$base_id" > "$STATE_DIR/base_id"
     rm -f "$STATE_DIR"/smoke-pass-* "$STATE_DIR"/promoted-* 2>/dev/null || true
