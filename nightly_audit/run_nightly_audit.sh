@@ -154,6 +154,7 @@ record_smoke_and_promote() {
   IFS=',' read -ra _MODES <<< "$modes_csv"
   for m in "${_MODES[@]}"; do
     [[ "$m" == \** ]] && continue   # "*" 付き mode は昇格要件外 (smoke は従来どおり回る)
+    m="${m%%:*}"                    # "MODE:config" の config 部を落とす (台帳キーは素の mode 名)
     [[ "$(awk '{print $1}' "$STATE_DIR/smoke-pass-${SMOKE_DEPLOY}-${m}" 2>/dev/null)" == "$base_id" ]] || missing+="$m "
   done
   if [[ -n "$missing" ]]; then
@@ -254,9 +255,18 @@ if [[ "$THEME" == backend-smoke-*-* ]]; then
   [[ -n "$SMOKE_PATH" ]] || { echo "backend-smoke: deploy '$SMOKE_DEPLOY' が targets.conf に無い"; exit 1; }
   # ★安全: mode が targets.conf の許可リストに無ければ実行しない (EXP 混入を弾く)
   IFS=',' read -ra MODES <<< "$(echo "${SMOKE_MODES_CSV:-}" | tr -d ' ')"
-  # 先頭 "*" の mode は「smoke は回すが正式イメージ昇格の要件に数えない」(例: *SITL_OMNI は GUI 前提で無人 PASS 不能)
-  ok=0; for m in "${MODES[@]}"; do [[ "${m#\*}" == "$SMOKE_MODE" ]] && ok=1; done
+  # 先頭 "*" の mode は「smoke は回すが正式イメージ昇格の要件に数えない」(例: *SITL_OMNI は GUI 前提で無人 PASS 不能)。
+  # 各要素は "MODE:config.yaml" — project_launch が config 明示必須のため、起動 config もここが正本。
+  ok=0; SMOKE_CONFIG=""
+  for m in "${MODES[@]}"; do
+    tok="${m#\*}"
+    [[ "${tok%%:*}" == "$SMOKE_MODE" ]] || continue
+    ok=1
+    [[ "$tok" == *:* ]] && SMOKE_CONFIG="${tok#*:}"
+    break
+  done
   [[ "$ok" == 1 ]] || { echo "backend-smoke: mode '$SMOKE_MODE' は $SMOKE_DEPLOY の許可 modes ($SMOKE_MODES_CSV) に無い。安全のため中止。"; exit 1; }
+  [[ -n "$SMOKE_CONFIG" ]] || { echo "backend-smoke: targets.conf の $SMOKE_DEPLOY/$SMOKE_MODE に :config が無い (MODE:config.yaml 形式が必須)。中止。"; exit 1; }
 elif [[ "$THEME" == backend-smoke-* ]]; then
   echo "backend-smoke は 'backend-smoke-<deploy>-<mode>' 形式で指定する (例: backend-smoke-drone-SIM)。1 backend=1晩。"; exit 1
 else
@@ -297,6 +307,8 @@ $(if [[ -n "$SMOKE_DEPLOY" ]]; then cat <<SMOKE
 今夜の backend-smoke 対象 (★この1 backend だけ・1晩1 backend):
   deploy = ${SMOKE_DEPLOY}   (稼働 checkout: ${SMOKE_PATH})
   mode   = ${SMOKE_MODE}
+  config = ${SMOKE_CONFIG}
+  起動コマンド (一字一句このまま): dup all ${SMOKE_MODE} ${SMOKE_CONFIG}
 他の backend/mode は今夜は回さない。上記 deploy×mode 1つだけを稼働 checkout で起動検証する。
 安全則: SIM/SITL のみ・HITL は受動 (bringup/topic 確認まで)・EXP 禁止・実駆動指令を送らない。
 ============================================================
