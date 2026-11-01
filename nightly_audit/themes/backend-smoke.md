@@ -27,14 +27,16 @@
   - drone: `SIM` / `SITL_PX4` / `SITL_GZ_PX4` / `SITL_AP` / `SITL_OMNI`
 
 ## 実行手順 (試走で確立・このとおり叩く)
-稼働 checkout で ecosystem を source してから `dup`。注入された deploy/mode を使う。
+稼働 checkout で ecosystem を source してから `dup`。注入された deploy/mode/config を使う
+(config yaml は**明示必須** — 省略すると project_launch が usage エラーで即終了する。
+注入ブロックの「起動コマンド」を一字一句そのまま打つ)。
 ```bash
 cd ~/<deploy> && source .acsl/bashrc        # dup/dps/dlogs/drm を PATH に入れる
-dup all <MODE> > /tmp/smoke.log 2>&1         # ★ -d で detached。rc=0 で即返る (= 起動成功とは限らない)
+dup all <MODE> <CONFIG> > /tmp/smoke.log 2>&1  # ★ -d で detached。rc=0 で即返る (= 起動成功とは限らない)
 # ↓ 起動の実判定は「コンテナのログ」を見る。CONTAINER 名は dps で確認 (drone は "drone2" 等)
 docker logs --tail 100 <container>           # ★ dlogs は使わない (follow で固まる → 監査停止)
 ```
-- [ ] `dup all <MODE>` がコンテナを起動するか (`docker ps` に出る)
+- [ ] `dup all <MODE> <CONFIG>` がコンテナを起動するか (`docker ps` に出る)
 - [ ] コンテナログにツールチェーン構築と **`... drone_node]: Drone ready: ... backend=<...>`**
       (rover は対応する ready ログ) が出て、**Python traceback / 例外が無い**か
 - [ ] (任意・受動) 期待トピックが publish されるか: コンテナ内 `din <c>` から `ros2 topic list/hz`
@@ -43,8 +45,10 @@ docker logs --tail 100 <container>           # ★ dlogs は使わない (follow
 ### ★ 運用の落とし穴 (試走で判明)
 - **`dlogs` / `docker logs -f` は follow するので使わない** — 監査が固まる (試走で 2 分タイムアウト)。
   必ず非 follow の **`docker logs --tail N <container>`** でスナップショットを取る。
-- `dup all <MODE>` は `-d` で detached 起動 = **rc=0 でも中で例外死している可能性**がある。
+- `dup all <MODE> <CONFIG>` は `-d` で detached 起動 = **rc=0 でも中で例外死している可能性**がある。
   判定は必ずコンテナログで行う。`dup` の rc だけで成功と判断しない。
+- heartbeat/ログの `sensors=NG(...)` は「required_sensors 宣言のセンサーが未受信」の表示。
+  smoke は bringup 判定のみで arm しないため、これ自体は FAIL 条件ではない (Ready 到達が基準)。
 - イメージ名: ログに `image drone2_x86 does NOT exists. Use image_drone2_x86` と出るが、これは
   harness の正常なフォールバック表示 (`image_<tag>` を使う)。**これ自体は指摘ではない**。
 
