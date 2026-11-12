@@ -112,6 +112,21 @@ rebuild_derived_images() {
     for sdep in $(grep -vE '^[[:space:]]*(#|$)' "$DERIVED_CONF" | awk -F'|' '{gsub(/[ \t]/,"",$1); print $1}' | sort -u); do
       spath="$(deploy_field "$sdep" 3)"; spath="${spath/#\~/$HOME}"
       [[ -x "$spath/setup" ]] || { echo "[derived] $sdep: $spath/setup 無し skip" | tee -a "$logf"; continue; }
+      # .env が無いと compose の bind mount で Docker が root 所有の「ディレクトリ」を
+      # 自動生成し、dcommit でイメージに焼かれて以後のファイル mount が型不一致で
+      # 全 dup 起動不能になる (2026-11-12 ~/drone で実例)。空ファイルを先に置いて防ぐ。
+      [[ -e "$spath/.env" ]] || touch "$spath/.env"
+      # base は Dockerfile で project_common をタグ固定 pip install しているため、
+      # base 再ビルド直後は acsl が古い (2026-11-07〜10 drone 全 FAIL の原因:
+      # ImportError validate_category_contracts)。setup full と同じ順序で
+      # update_common (最新 common を pip 上書き → dcommit) を挟んでから setup する。
+      echo "[derived] $sdep: update_common (最新 project_common をイメージへ)" | tee -a "$logf"
+      if (cd "$spath" && env ACSL_ROS2_DIR="$spath/.acsl" \
+            bash -c 'source "$ACSL_ROS2_DIR/bashrc" && update_common' >>"$logf" 2>&1); then
+        echo "[derived] $sdep: update_common OK" | tee -a "$logf"
+      else
+        echo "[derived] $sdep: update_common 失敗" | tee -a "$logf"; fail=1
+      fi
       echo "[derived] $sdep: ./setup (build_project で workspace をイメージへ焼込)" | tee -a "$logf"
       if (cd "$spath" && env ACSL_ROS2_DIR="$spath/.acsl" ./setup >>"$logf" 2>&1); then
         echo "[derived] $sdep: setup OK" | tee -a "$logf"
